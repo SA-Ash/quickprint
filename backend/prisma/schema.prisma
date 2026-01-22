@@ -1,0 +1,130 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  SHOP
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PRINTING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  phone        String   @unique
+  email        String?  @unique
+  passwordHash String?  // For partner email/password auth
+  name         String?
+  role         UserRole @default(STUDENT)
+  college      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders Order[]
+  shop   Shop?
+
+  @@index([phone])
+  @@index([email])
+}
+
+model Shop {
+  id           String   @id @default(cuid())
+  ownerId      String   @unique
+  owner        User     @relation(fields: [ownerId], references: [id])
+  businessName String
+  address      Json // { street, city, state, pincode }
+  location     Json // { lat, lng }
+  services     Json // { colorPrinting, binding, lamination }
+  pricing      Json // { bwSingle, colorSingle, bwDouble, colorDouble }
+  rating       Float    @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([isActive])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  shopId      String
+  shop        Shop        @relation(fields: [shopId], references: [id])
+  file        Json // { url, name, pages }
+  printConfig Json // { pages, color, copies, binding, sides }
+  status      OrderStatus @default(PENDING)
+  totalCost   Decimal     @db.Decimal(10, 2)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  payment Payment?
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([status])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  order           Order         @relation(fields: [orderId], references: [id])
+  amount          Decimal       @db.Decimal(10, 2)
+  status          PaymentStatus @default(PENDING)
+  provider        String // razorpay, cashfree
+  providerOrderId String?
+  providerPayId   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([status])
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  otp       String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, otp])
+  @@index([expiresAt])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}

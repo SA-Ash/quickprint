@@ -1,0 +1,8 @@
+{
+  "watch": ["src"],
+  "ext": "json,jsx,js,ts,tsx",
+  "execMap": {
+    "ts": "node --loader ts-node/esm"
+  },
+  "exec": "node --loader ts-node/esm --no-warnings src/worker.ts"
+}

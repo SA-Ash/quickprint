@@ -1,0 +1,50 @@
+{
+  "name": "quickprint-core-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.968.0",
+    "@aws-sdk/s3-request-presigner": "^3.968.0",
+    "@fastify/cors": "^8.4.0",
+    "@fastify/helmet": "^11.1.0",
+    "@fastify/multipart": "^8.1.0",
+    "@fastify/rate-limit": "^9.1.0",
+    "@fastify/swagger": "^8.12.0",
+    "@fastify/swagger-ui": "^2.1.0",
+    "@fastify/websocket": "^11.2.0",
+    "@prisma/client": "^5.22.0",
+    "amqplib": "^0.10.9",
+    "argon2": "^0.44.0",
+    "dayjs": "^1.11.10",
+    "dotenv": "^16.3.1",
+    "fastify": "^4.25.0",
+    "ioredis": "^5.9.1",
+    "jsonwebtoken": "^9.0.2",
+    "nanoid": "^5.0.4",
+    "nodemailer": "^6.9.16",
+    "pino": "^8.18.0",
+    "razorpay": "^2.9.6",
+    "socket.io": "^4.8.3",
+    "twilio": "^4.20.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.8",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.10.0",
+    "pino-pretty": "^10.3.0",
+    "prisma": "^5.22.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
