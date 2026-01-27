@@ -1,17 +1,8 @@
-/**
- * Analytics Service
- * Provides business analytics data for shop owners
- */
-
 import { prisma } from '../../infrastructure/database/prisma.client.js';
 
 export const analyticsService = {
-  /**
-   * Get shop analytics summary
-   * @param shopOwnerId - The ID of the shop owner
-   */
   async getShopSummary(shopOwnerId: string) {
-    // Find shop by owner
+
     const shop = await prisma.shop.findUnique({
       where: { ownerId: shopOwnerId },
     });
@@ -25,7 +16,6 @@ export const analyticsService = {
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    // Get current month stats
     const currentMonthOrders = await prisma.order.findMany({
       where: {
         shopId: shop.id,
@@ -36,7 +26,6 @@ export const analyticsService = {
       },
     });
 
-    // Get last month stats for comparison
     const lastMonthOrders = await prisma.order.findMany({
       where: {
         shopId: shop.id,
@@ -50,17 +39,13 @@ export const analyticsService = {
       },
     });
 
-    // Calculate current month revenue
     const currentMonthRevenue = currentMonthOrders.reduce((sum, order) => {
       return sum + parseFloat(order.totalCost.toString());
     }, 0);
 
-    // Calculate last month revenue
     const lastMonthRevenue = lastMonthOrders.reduce((sum, order) => {
       return sum + parseFloat(order.totalCost.toString());
     }, 0);
-
-    // Calculate trends
     const revenueTrend = lastMonthRevenue > 0
       ? ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue * 100).toFixed(0)
       : currentMonthRevenue > 0 ? 100 : 0;
@@ -69,7 +54,6 @@ export const analyticsService = {
       ? ((currentMonthOrders.length - lastMonthOrders.length) / lastMonthOrders.length * 100).toFixed(0)
       : currentMonthOrders.length > 0 ? 100 : 0;
 
-    // Calculate average order value
     const avgOrderValue = currentMonthOrders.length > 0
       ? Math.round(currentMonthRevenue / currentMonthOrders.length)
       : 0;
@@ -82,7 +66,6 @@ export const analyticsService = {
       ? ((avgOrderValue - lastMonthAvgOrderValue) / lastMonthAvgOrderValue * 100).toFixed(0)
       : avgOrderValue > 0 ? 100 : 0;
 
-    // Calculate on-time delivery rate
     const completedOrders = currentMonthOrders.filter(o => o.status === 'COMPLETED');
     const onTimeRate = currentMonthOrders.length > 0
       ? Math.round((completedOrders.length / currentMonthOrders.length) * 100)
@@ -118,9 +101,6 @@ export const analyticsService = {
     };
   },
 
-  /**
-   * Get revenue trends for charts
-   */
   async getRevenueTrends(shopOwnerId: string) {
     const shop = await prisma.shop.findUnique({
       where: { ownerId: shopOwnerId },
@@ -133,7 +113,6 @@ export const analyticsService = {
     const months = [];
     const now = new Date();
 
-    // Get last 6 months of data
     for (let i = 5; i >= 0; i--) {
       const startDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const endDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
@@ -162,9 +141,7 @@ export const analyticsService = {
     return { trends: months };
   },
 
-  /**
-   * Get popular services data
-   */
+
   async getPopularServices(shopOwnerId: string) {
     const shop = await prisma.shop.findUnique({
       where: { ownerId: shopOwnerId },
@@ -178,7 +155,6 @@ export const analyticsService = {
       where: { shopId: shop.id },
     });
 
-    // Aggregate service usage from order printConfig
     const serviceCounts: Record<string, number> = {
       'B&W Single': 0,
       'B&W Double': 0,

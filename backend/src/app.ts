@@ -11,6 +11,7 @@ import { orderRoutes } from './modules/order/index.js';
 import { shopRoutes } from './modules/shop/index.js';
 import { paymentRoutes } from './modules/payment/index.js';
 import { analyticsRoutes } from './modules/analytics/index.js';
+import { reviewRoutes } from './modules/review/index.js';
 
 import { authMiddleware } from './common/middleware/index.js';
 
@@ -64,6 +65,16 @@ export async function buildApp() {
     { prefix: `${API_PREFIX}/users` }
   );
 
+  // Pricing routes (public - needed for cart before checkout)
+  await fastify.register(
+    async (instance) => {
+      const { pricingController } = await import('./modules/order/pricing.controller.js');
+      instance.post('/calculate-price', pricingController.calculatePrice);
+      instance.get('/shops/:shopId/surge', pricingController.getShopSurge);
+    },
+    { prefix: `${API_PREFIX}/pricing` }
+  );
+
   // Order routes (protected)
   await fastify.register(
     async (instance) => {
@@ -90,6 +101,8 @@ export async function buildApp() {
     },
     { prefix: `${API_PREFIX}/analytics` }
   );
+
+  await fastify.register(reviewRoutes, { prefix: `${API_PREFIX}/reviews` });
 
   return fastify;
 }

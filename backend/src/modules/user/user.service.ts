@@ -2,9 +2,7 @@ import { prisma } from '../../infrastructure/database/prisma.client.js';
 import type { UpdateProfileInput, UserProfile } from './user.schema.js';
 
 export const userService = {
-  /**
-   * Get user profile by ID
-   */
+  
   async getProfile(userId: string): Promise<UserProfile | null> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -19,13 +17,15 @@ export const userService = {
       name: user.name,
       role: user.role,
       college: user.college,
+      otpEnabled: user.otpEnabled,
+      otpMethod: user.otpMethod,
+      hasPassword: !!user.passwordHash,
+      hasGoogleLinked: !!user.googleId,
       createdAt: user.createdAt,
     };
   },
 
-  /**
-   * Update user profile
-   */
+  
   async updateProfile(
     userId: string,
     input: UpdateProfileInput
@@ -36,6 +36,7 @@ export const userService = {
         ...(input.name !== undefined && { name: input.name }),
         ...(input.email !== undefined && { email: input.email }),
         ...(input.college !== undefined && { college: input.college }),
+        ...(input.phone !== undefined && { phone: input.phone }),
       },
     });
 
@@ -46,13 +47,15 @@ export const userService = {
       name: user.name,
       role: user.role,
       college: user.college,
+      otpEnabled: user.otpEnabled,
+      otpMethod: user.otpMethod,
+      hasPassword: !!user.passwordHash,
+      hasGoogleLinked: !!user.googleId,
       createdAt: user.createdAt,
     };
   },
 
-  /**
-   * Get user by ID (internal use)
-   */
+ 
   async getUserById(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },

@@ -34,7 +34,9 @@ const PrintOptions = ({
                 {selectedShop.name}
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                {selectedShop.address}
+                {typeof selectedShop.address === 'object' 
+                  ? `${selectedShop.address.street}, ${selectedShop.address.city}, ${selectedShop.address.state} - ${selectedShop.address.pincode}`
+                  : selectedShop.address}
               </p>
               {selectedShop.contact && (
                 <div className="flex items-center gap-1 mt-2">

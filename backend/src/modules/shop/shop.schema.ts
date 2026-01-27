@@ -1,15 +1,13 @@
 import { z } from 'zod';
 
-// Get nearby shops
 export const nearbyShopsSchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lng: z.coerce.number().min(-180).max(180),
-  radius: z.coerce.number().min(0.1).max(50).default(5), // km
+  radius: z.coerce.number().min(100).max(50000).default(5000),
 });
 
 export type NearbyShopsInput = z.infer<typeof nearbyShopsSchema>;
 
-// Update shop details
 export const updateShopSchema = z.object({
   businessName: z.string().min(1).max(100).optional(),
   address: z.object({
@@ -32,7 +30,6 @@ export const updateShopSchema = z.object({
 
 export type UpdateShopInput = z.infer<typeof updateShopSchema>;
 
-// Update pricing
 export const updatePricingSchema = z.object({
   bwSingle: z.number().min(0).optional(),
   bwDouble: z.number().min(0).optional(),
@@ -43,8 +40,6 @@ export const updatePricingSchema = z.object({
 });
 
 export type UpdatePricingInput = z.infer<typeof updatePricingSchema>;
-
-// Shop response types
 export interface ShopAddress {
   street: string;
   city: string;
@@ -81,6 +76,24 @@ export interface ShopResponse {
   services: ShopServices;
   pricing: ShopPricing;
   rating: number;
+  reviewCount: number;
+  description: string | null;
+  operatingHours: Record<string, string> | null;
   isActive: boolean;
-  distance?: number; // km, only for nearby searches
+  distance?: number;
 }
+
+export const shopDetailsQuerySchema = z.object({
+  lat: z.coerce.number().min(-90).max(90).optional(),
+  lng: z.coerce.number().min(-180).max(180).optional(),
+});
+
+export type ShopDetailsQuery = z.infer<typeof shopDetailsQuerySchema>;
+
+export const uploadPhotoSchema = z.object({
+  url: z.string().url(),
+  caption: z.string().max(200).optional(),
+});
+
+export type UploadPhotoInput = z.infer<typeof uploadPhotoSchema>;
+

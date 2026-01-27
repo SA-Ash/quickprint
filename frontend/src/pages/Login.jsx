@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
 import LocationPermission from "../Components/LocationPermission.jsx";
+import COLLEGES from "../constants/colleges.js";
 
 const Login = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -262,11 +263,11 @@ const Login = () => {
                         required
                         disabled={otpSent}
                       >
-                        <option value="">Select Your College</option>
-                        <option value="ou">Osmania University</option>
-                        <option value="jntu">JNTU Hyderabad</option>
-                        <option value="iit">IIT Hyderabad</option>
-                        <option value="bits">BITS Pilani, Hyderabad</option>
+                          {COLLEGES.map((c) => (
+                          <option key={c.value} value={c.value}>
+                            {c.label}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

@@ -40,16 +40,69 @@ export const AuthProvider = ({ children }) => {
           setUser(response.user);
           return { success: true, user: response.user };
         }
+      } else if (loginData.type === 'phone_password') {
+        // Phone + Password authentication
+        if (loginData.step === 'signup') {
+          const response = await authService.phonePasswordSignup(
+            loginData.phone,
+            loginData.password,
+            loginData.name,
+            loginData.college
+          );
+          setUser(response.user);
+          return { success: true, user: response.user };
+        } else {
+          // Default to login
+          const response = await authService.phonePasswordLogin(loginData.phone, loginData.password);
+          setUser(response.user);
+          return { success: true, user: response.user };
+        }
+      } else if (loginData.type === 'email_password') {
+        // Email + Password authentication
+        if (loginData.step === 'signup') {
+          const response = await authService.emailPasswordSignup(
+            loginData.email,
+            loginData.password,
+            loginData.name,
+            loginData.college
+          );
+          setUser(response.user);
+          return { success: true, user: response.user };
+        } else {
+          // Default to login
+          const response = await authService.emailPasswordLogin(loginData.email, loginData.password);
+          setUser(response.user);
+          return { success: true, user: response.user };
+        }
       } else if (loginData.type === 'google') {
         const response = await authService.googleAuth(loginData.idToken);
         setUser(response.user);
         return { success: true, user: response.user };
       } else if (loginData.type === 'partner') {
         if (loginData.step === 'register') {
+          // Legacy direct registration (without 2FA)
           const response = await authService.partnerRegister(loginData);
           setUser(response.user);
           return { success: true, user: response.user };
+        } else if (loginData.step === 'initiate') {
+          // Step 1: Initiate 2FA registration - sends OTP to phone
+          const response = await authService.initiatePartnerRegister(loginData);
+          return { success: true, message: response.message, phone: response.phone };
+        } else if (loginData.step === 'verify-otp') {
+          // Step 2: Verify OTP - sends magic link to email
+          const response = await authService.verifyPartnerOTP(loginData.phone, loginData.code);
+          return { success: true, message: response.message, email: response.email };
+        } else if (loginData.step === 'verify-email') {
+          // Step 3: Complete registration via magic link
+          const response = await authService.completePartnerRegister(loginData.token);
+          setUser(response.user);
+          return { success: true, user: response.user };
+        } else if (loginData.step === 'resend-otp') {
+          // Resend OTP
+          const response = await authService.resendPartnerOTP(loginData.phone);
+          return { success: true, message: response.message };
         } else {
+          // Default: login with email/password
           const response = await authService.partnerLogin(loginData.email, loginData.password);
           setUser(response.user);
           return { success: true, user: response.user };

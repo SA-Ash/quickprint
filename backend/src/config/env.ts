@@ -27,10 +27,11 @@ const envSchema = z.object({
   // RabbitMQ (optional for now)
   RABBITMQ_URL: z.string().optional(),
 
-  // Razorpay
-  RAZORPAY_KEY_ID: z.string().optional(),
-  RAZORPAY_KEY_SECRET: z.string().optional(),
-  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  // Paytm
+  PAYTM_MID: z.string().optional(),
+  PAYTM_MKEY: z.string().optional(),
+  PAYTM_WEBSITE: z.string().default('DEFAULT'),
+  API_BASE_URL: z.string().default('http://localhost:3000'),
 
   // AWS S3
   AWS_REGION: z.string().optional(),

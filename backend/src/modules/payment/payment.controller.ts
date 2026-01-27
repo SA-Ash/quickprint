@@ -1,6 +1,5 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { paymentService } from './payment.service.js';
-import { razorpayProvider } from './providers/razorpay.provider.js';
 import {
   initiatePaymentSchema,
   verifyPaymentSchema,
@@ -41,7 +40,7 @@ export const paymentController = {
         if (error.message === 'Payment not found') {
           return reply.code(404).send({ error: error.message });
         }
-        if (error.message.includes('verification failed')) {
+        if (error.message.includes('failed')) {
           return reply.code(400).send({ error: error.message });
         }
       }
@@ -85,23 +84,24 @@ export const paymentController = {
     }
   },
 
-  async handleWebhook(request: FastifyRequest, reply: FastifyReply) {
+  async handlePaytmCallback(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const signature = request.headers['x-razorpay-signature'] as string;
-      const rawBody = JSON.stringify(request.body);
-
-      const isValid = await razorpayProvider.verifyWebhookSignature(rawBody, signature);
-      if (!isValid) {
-        return reply.code(400).send({ error: 'Invalid webhook signature' });
-      }
-
-      const body = request.body as { event: string; payload: any };
-      await paymentService.handleWebhook(body.event, body.payload);
-
-      return reply.code(200).send({ received: true });
+      const callbackData = request.body as Record<string, string>;
+      const result = await paymentService.handlePaytmCallback(callbackData);
+      
+      return reply.code(200).send({ 
+        status: 'success',
+        payment: result,
+      });
     } catch (error) {
-      console.error('[Webhook] Error:', error);
-      return reply.code(500).send({ error: 'Webhook processing failed' });
+      console.error('[Paytm Callback] Error:', error);
+      if (error instanceof Error) {
+        return reply.code(400).send({ 
+          status: 'failed',
+          error: error.message,
+        });
+      }
+      return reply.code(500).send({ error: 'Callback processing failed' });
     }
   },
 };

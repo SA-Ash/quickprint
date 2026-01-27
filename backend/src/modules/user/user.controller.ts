@@ -5,10 +5,7 @@ import { updateProfileSchema } from './user.schema.js';
 
 
 export const userController = {
-  /**
-   * GET /api/users/me
-   * Get current user profile
-   */
+  
   async getMe(request: FastifyRequest, reply: FastifyReply) {
     try {
       if (!request.user) {
@@ -26,10 +23,7 @@ export const userController = {
     }
   },
 
-  /**
-   * PUT /api/users/me
-   * Update current user profile
-   */
+ 
   async updateMe(request: FastifyRequest, reply: FastifyReply) {
     try {
       if (!request.user) {
@@ -48,10 +42,7 @@ export const userController = {
     }
   },
 
-  /**
-   * GET /api/users/:id
-   * Get user by ID (internal/admin use)
-   */
+ 
   async getUserById(
     request: FastifyRequest<{ Params: { id: string } }>,
     reply: FastifyReply

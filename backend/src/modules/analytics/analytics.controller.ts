@@ -1,17 +1,13 @@
-/**
- * Analytics Controller
- * Handles HTTP requests for analytics endpoints
- */
-
-import { FastifyReply } from 'fastify';
+import { FastifyReply, FastifyRequest } from 'fastify';
 import { AuthenticatedRequest } from '../../common/index.js';
 import { analyticsService } from './analytics.service.js';
 
 export const analyticsController = {
  
-  async getSummary(request: AuthenticatedRequest, reply: FastifyReply) {
+  async getSummary(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const summary = await analyticsService.getShopSummary(request.user.id);
+      const req = request as AuthenticatedRequest;
+      const summary = await analyticsService.getShopSummary(req.user.id);
       return reply.send(summary);
     } catch (error) {
       const err = error as Error;
@@ -20,9 +16,10 @@ export const analyticsController = {
   },
 
  
-  async getRevenueTrends(request: AuthenticatedRequest, reply: FastifyReply) {
+  async getRevenueTrends(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const trends = await analyticsService.getRevenueTrends(request.user.id);
+      const req = request as AuthenticatedRequest;
+      const trends = await analyticsService.getRevenueTrends(req.user.id);
       return reply.send(trends);
     } catch (error) {
       const err = error as Error;
@@ -31,9 +28,10 @@ export const analyticsController = {
   },
 
  
-  async getPopularServices(request: AuthenticatedRequest, reply: FastifyReply) {
+  async getPopularServices(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const services = await analyticsService.getPopularServices(request.user.id);
+      const req = request as AuthenticatedRequest;
+      const services = await analyticsService.getPopularServices(req.user.id);
       return reply.send(services);
     } catch (error) {
       const err = error as Error;

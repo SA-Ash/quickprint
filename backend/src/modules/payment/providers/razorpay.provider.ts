@@ -1,13 +1,13 @@
-import { env } from '../../../config/env.js';
+import { nanoid } from 'nanoid';
 
 interface CreateOrderParams {
-  amount: number; // in smallest currency unit (paise)
+  amount: number;
   currency?: string;
   receipt: string;
   notes?: Record<string, string>;
 }
 
-interface RazorpayOrder {
+interface MockOrder {
   id: string;
   entity: string;
   amount: number;
@@ -25,18 +25,11 @@ interface VerifySignatureParams {
 }
 
 export const razorpayProvider = {
-  async createOrder(params: CreateOrderParams): Promise<RazorpayOrder> {
-    if (env.NODE_ENV === 'development' && !env.RAZORPAY_KEY_ID) {
-      return this.mockCreateOrder(params);
-    }
-    return this.realCreateOrder(params);
-  },
+  async createOrder(params: CreateOrderParams): Promise<MockOrder> {
+    console.log(`[MOCK PAYMENT] Creating order: ${params.receipt}, Amount: ₹${params.amount / 100}`);
 
-  async mockCreateOrder(params: CreateOrderParams): Promise<RazorpayOrder> {
-    console.log(`[MOCK RAZORPAY] Creating order: ${params.receipt}, Amount: ${params.amount}`);
-    
     return {
-      id: 'order_mock_' + Date.now(),
+      id: 'order_' + nanoid(16),
       entity: 'order',
       amount: params.amount,
       amount_paid: 0,
@@ -47,62 +40,17 @@ export const razorpayProvider = {
     };
   },
 
-  async realCreateOrder(params: CreateOrderParams): Promise<RazorpayOrder> {
-    const Razorpay = (await import('razorpay')).default;
-    
-    const instance = new Razorpay({
-      key_id: env.RAZORPAY_KEY_ID!,
-      key_secret: env.RAZORPAY_KEY_SECRET!,
-    });
-
-    const order = await instance.orders.create({
-      amount: params.amount,
-      currency: params.currency || 'INR',
-      receipt: params.receipt,
-      notes: params.notes,
-    });
-
-    console.log(`[RAZORPAY] Order created: ${order.id}`);
-    return order as RazorpayOrder;
+  async verifySignature(_params: VerifySignatureParams): Promise<boolean> {
+    console.log('[MOCK PAYMENT] Payment signature verified (mock)');
+    return true;
   },
 
-  async verifySignature(params: VerifySignatureParams): Promise<boolean> {
-    if (env.NODE_ENV === 'development' && !env.RAZORPAY_KEY_SECRET) {
-      console.log('[MOCK RAZORPAY] Signature verification bypassed');
-      return true;
-    }
-
-    const crypto = await import('crypto');
-    
-    const body = params.razorpay_order_id + '|' + params.razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac('sha256', env.RAZORPAY_KEY_SECRET!)
-      .update(body)
-      .digest('hex');
-
-    const isValid = expectedSignature === params.razorpay_signature;
-    console.log(`[RAZORPAY] Signature verification: ${isValid ? 'PASSED' : 'FAILED'}`);
-    
-    return isValid;
-  },
-
-  async verifyWebhookSignature(body: string, signature: string): Promise<boolean> {
-    if (env.NODE_ENV === 'development' && !env.RAZORPAY_WEBHOOK_SECRET) {
-      console.log('[MOCK RAZORPAY] Webhook signature verification bypassed');
-      return true;
-    }
-
-    const crypto = await import('crypto');
-    
-    const expectedSignature = crypto
-      .createHmac('sha256', env.RAZORPAY_WEBHOOK_SECRET!)
-      .update(body)
-      .digest('hex');
-
-    return expectedSignature === signature;
+  async verifyWebhookSignature(_body: string, _signature: string): Promise<boolean> {
+    console.log('[MOCK PAYMENT] Webhook signature verified (mock)');
+    return true;
   },
 
   getKeyId(): string {
-    return env.RAZORPAY_KEY_ID || 'rzp_test_mock';
+    return 'mock_key_id';
   },
 };

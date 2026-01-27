@@ -32,56 +32,110 @@ enum PaymentStatus {
   REFUNDED
 }
 
-model User {
-  id           String   @id @default(cuid())
-  phone        String   @unique
-  email        String?  @unique
-  passwordHash String?  // For partner email/password auth
-  name         String?
-  role         UserRole @default(STUDENT)
-  college      String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+enum AuthMethod {
+  PHONE_OTP
+  EMAIL_OTP
+  PHONE_PASSWORD
+  EMAIL_PASSWORD
+}
 
-  orders Order[]
-  shop   Shop?
+model User {
+  id           String     @id @default(cuid())
+  phone        String     @unique
+  email        String?    @unique
+  passwordHash String?
+  name         String?
+  role         UserRole   @default(STUDENT)
+  college      String?
+  authMethod   AuthMethod @default(PHONE_OTP)
+  otpEnabled   Boolean    @default(true)
+  otpMethod    String     @default("sms")
+  backupCodes  String[]   @default([])
+  googleId     String?    @unique
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  orders     Order[]
+  shop       Shop?
+  reviews    Review[]
+  shopPhotos ShopPhoto[] @relation("ShopPhotoUploader")
 
   @@index([phone])
   @@index([email])
+  @@index([googleId])
 }
 
 model Shop {
-  id           String   @id @default(cuid())
-  ownerId      String   @unique
-  owner        User     @relation(fields: [ownerId], references: [id])
-  businessName String
-  address      Json // { street, city, state, pincode }
-  location     Json // { lat, lng }
-  services     Json // { colorPrinting, binding, lamination }
-  pricing      Json // { bwSingle, colorSingle, bwDouble, colorDouble }
-  rating       Float    @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  ownerId        String   @unique
+  owner          User     @relation(fields: [ownerId], references: [id])
+  businessName   String
+  address        Json
+  location       Json
+  services       Json
+  pricing        Json
+  rating         Float    @default(0)
+  reviewCount    Int      @default(0)
+  totalRatingSum Int      @default(0)
+  description    String?
+  operatingHours Json?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  orders Order[]
+  orders  Order[]
+  reviews Review[]
+  photos  ShopPhoto[]
 
   @@index([isActive])
+  @@index([rating])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  rating    Int
+  comment   String?
+  photos    String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, shopId])
+  @@index([shopId])
+  @@index([userId])
+}
+
+model ShopPhoto {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("ShopPhotoUploader", fields: [userId], references: [id])
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  @@index([shopId])
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  orderNumber String      @unique
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  shopId      String
-  shop        Shop        @relation(fields: [shopId], references: [id])
-  file        Json // { url, name, pages }
-  printConfig Json // { pages, color, copies, binding, sides }
-  status      OrderStatus @default(PENDING)
-  totalCost   Decimal     @db.Decimal(10, 2)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id            String        @id @default(cuid())
+  orderNumber   String        @unique
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  shopId        String
+  shop          Shop          @relation(fields: [shopId], references: [id])
+  file          Json // { url, name, pages }
+  printConfig   Json // { pages, color, copies, binding, sides }
+  status        OrderStatus   @default(PENDING)
+  paymentMethod String        @default("cod") // cod, upi, paytm, online
+  paymentStatus String        @default("pending") // pending, completed, failed
+  totalCost     Decimal       @db.Decimal(10, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   payment Payment?
 
@@ -128,3 +182,41 @@ model RefreshToken {
   @@index([token])
   @@index([expiresAt])
 }
+
+// Stores pending partner registrations during 2FA verification
+model PendingPartnerRegistration {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String   @unique
+  passwordHash String
+  name         String
+  shopName     String
+  address      Json
+  location     Json?
+  phoneVerified Boolean @default(false)
+  emailVerified Boolean @default(false)
+  emailToken   String?  @unique
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([email])
+  @@index([phone])
+  @@index([emailToken])
+  @@index([expiresAt])
+}
+
+// Stores email verification tokens (magic links)
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  type      String   // 'partner_register', 'user_register', 'password_reset'
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+

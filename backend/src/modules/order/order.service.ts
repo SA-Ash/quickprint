@@ -60,13 +60,14 @@ export const orderService = {
         printConfig: input.printConfig as Prisma.InputJsonValue,
         totalCost,
         status: 'PENDING',
+        paymentMethod: input.paymentMethod || 'cod',
+        paymentStatus: input.paymentMethod === 'cod' ? 'pending' : 'pending',
       },
       include: {
         shop: { select: { id: true, businessName: true } },
       },
     });
 
-    // Publish order.created event to RabbitMQ
     await orderPublisher.publishOrderCreated({
       orderId: order.id,
       userId,
@@ -74,7 +75,6 @@ export const orderService = {
       orderNumber: order.orderNumber,
     });
 
-    // Emit real-time WebSocket event
     wsGateway.orderCreated({
       id: order.id,
       orderNumber: order.orderNumber,
@@ -144,7 +144,6 @@ export const orderService = {
       },
     });
 
-    // Publish status-specific events
     switch (status) {
       case 'ACCEPTED':
         await orderPublisher.publishOrderConfirmed({ orderId, userId: order.userId });
@@ -160,7 +159,6 @@ export const orderService = {
         break;
     }
 
-    // Emit real-time WebSocket event
     wsGateway.orderStatusChanged({
       id: updatedOrder.id,
       orderNumber: updatedOrder.orderNumber,

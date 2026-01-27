@@ -15,6 +15,43 @@ export const OrdersProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const [notifications, setNotifications] = useState([]);
 
+  // Helper to get status text
+  const getStatusText = (status) => {
+    const statusMap = {
+      PENDING: "Pending",
+      ACCEPTED: "Accepted",
+      PRINTING: "Printing",
+      READY: "Ready",
+      COMPLETED: "Completed",
+      CANCELLED: "Cancelled",
+    };
+    return statusMap[(status || "").toUpperCase()] || status || "Pending";
+  };
+
+  // Helper to map API order to component-friendly format
+  const mapOrderFromAPI = (order) => ({
+    ...order,
+    id: order.id,
+    orderNumber: order.orderNumber,
+    fileName: order.file?.name || order.fileName || "Document",
+    shopName: order.shop?.businessName || order.shopName || "Print Shop",
+    shopId: order.shopId,
+    status: (order.status || "PENDING").toLowerCase(),
+    statusText: getStatusText(order.status),
+    pages: order.file?.pages || order.pages || 1,
+    color: order.printConfig?.color || order.color || false,
+    doubleSided: order.printConfig?.sides === "double" || order.doubleSided || false,
+    copies: order.printConfig?.copies || order.copies || 1,
+    binding: order.printConfig?.binding ? "Bound" : "No Binding",
+    totalCost: parseFloat(order.totalCost) || 0,
+    paymentMethod: order.paymentMethod || "cod",
+    createdAt: new Date(order.createdAt),
+    updatedAt: new Date(order.updatedAt),
+    file: order.file,
+    shop: order.shop,
+    printConfig: order.printConfig,
+  });
+
   const loadOrders = async () => {
     if (!user) return;
 
@@ -43,11 +80,8 @@ export const OrdersProvider = ({ children }) => {
         const response = await orderService.getUserOrders();
         const ordersData = response.orders || response.data || response;
         
-        const parsedOrders = Array.isArray(ordersData) ? ordersData.map((order) => ({
-          ...order,
-          createdAt: new Date(order.createdAt),
-          updatedAt: new Date(order.updatedAt),
-        })) : [];
+        // Map each order to component-friendly format
+        const parsedOrders = Array.isArray(ordersData) ? ordersData.map(mapOrderFromAPI) : [];
         
         setOrders(parsedOrders);
       }
@@ -68,35 +102,29 @@ export const OrdersProvider = ({ children }) => {
         return createMockOrder(orderData);
       }
 
-      // Real API call
+      // Real API call - include paymentMethod
       const response = await orderService.createOrder({
         shopId: orderData.shopId,
-        file: {
-          url: orderData.fileUrl || '',
+        file: orderData.file || {
+          url: orderData.fileUrl || 'https://example.com/uploads/document.pdf',
           name: orderData.fileName || 'Document.pdf',
-          pages: orderData.printConfig?.pages || 1,
+          pages: orderData.file?.pages || orderData.printConfig?.pages || 1,
         },
         printConfig: {
-          pages: orderData.printConfig?.pages || 1,
+          pages: 'all',
           color: orderData.printConfig?.color || false,
           copies: orderData.printConfig?.copies || 1,
-          binding: orderData.printConfig?.binding || 'NONE',
-          sides: orderData.printConfig?.doubleSided ? 'DOUBLE' : 'SINGLE',
+          binding: orderData.printConfig?.binding === true || (orderData.printConfig?.binding !== 'No Binding' && orderData.printConfig?.binding !== false),
+          sides: orderData.printConfig?.sides || (orderData.printConfig?.doubleSided ? 'double' : 'single'),
         },
-        totalCost: orderData.totalCost || 0,
+        paymentMethod: orderData.paymentMethod || 'cod',
       });
 
       const newOrder = response.order || response;
+      const mappedOrder = mapOrderFromAPI(newOrder);
       
       // Add to local state
-      setOrders((prevOrders) => [
-        {
-          ...newOrder,
-          createdAt: new Date(newOrder.createdAt),
-          updatedAt: new Date(newOrder.updatedAt),
-        },
-        ...prevOrders,
-      ]);
+      setOrders((prevOrders) => [mappedOrder, ...prevOrders]);
 
       // Add notification
       addNotification({
@@ -109,7 +137,7 @@ export const OrdersProvider = ({ children }) => {
         orderId: newOrder.id,
       });
 
-      return newOrder;
+      return mappedOrder;
     } catch (err) {
       console.error("Failed to create order:", err);
       setError(err.message);

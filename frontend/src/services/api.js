@@ -62,22 +62,17 @@ class ApiClient {
         return headers;
     }
 
-    /**
-     * Handle API response
-     */
-    async handleResponse(response) {
+    async handleResponse(response, skipAuthRefresh = false) {
         const data = await response.json().catch(() => null);
 
         if (!response.ok) {
-            // If unauthorized, try to refresh token
-            if (response.status === 401) {
+            if (response.status === 401 && !skipAuthRefresh) {
                 const refreshed = await this.tryRefreshToken();
                 if (!refreshed) {
                     this.clearTokens();
                     window.location.href = '/login';
                     throw new Error('Session expired. Please login again.');
                 }
-                // Return null to signal retry needed
                 return { _retry: true };
             }
 
@@ -114,18 +109,15 @@ class ApiClient {
         }
     }
 
-    /**
-     * Make a GET request
-     */
     async get(endpoint, options = {}) {
+        const skipAuth = options.auth === false;
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
             method: 'GET',
-            headers: this.getHeaders(options.auth !== false),
+            headers: this.getHeaders(!skipAuth),
         });
 
-        const result = await this.handleResponse(response);
+        const result = await this.handleResponse(response, skipAuth);
 
-        // Retry if token was refreshed
         if (result?._retry) {
             return this.get(endpoint, options);
         }
@@ -133,17 +125,15 @@ class ApiClient {
         return result;
     }
 
-    /**
-     * Make a POST request
-     */
     async post(endpoint, body, options = {}) {
+        const skipAuth = options.auth === false;
         const response = await fetch(`${this.baseUrl}${endpoint}`, {
             method: 'POST',
-            headers: this.getHeaders(options.auth !== false),
+            headers: this.getHeaders(!skipAuth),
             body: JSON.stringify(body),
         });
 
-        const result = await this.handleResponse(response);
+        const result = await this.handleResponse(response, skipAuth);
 
         if (result?._retry) {
             return this.post(endpoint, body, options);

@@ -7,6 +7,19 @@ import {
   refreshTokenSchema,
   partnerRegisterSchema,
   partnerLoginSchema,
+  updateOtpSettingsSchema,
+  emailOtpInitiateSchema,
+  emailOtpVerifySchema,
+  setPasswordSchema,
+  googleLinkSchema,
+  phonePasswordSignupSchema,
+  phonePasswordLoginSchema,
+  emailPasswordSignupSchema,
+  emailPasswordLoginSchema,
+  partnerInitiateRegisterSchema,
+  partnerVerifyOtpSchema,
+  partnerVerifyEmailSchema,
+  resendPartnerOtpSchema,
 } from './auth.schema.js';
 
 export const authController = {
@@ -18,6 +31,24 @@ export const authController = {
     } catch (error) {
       if (error instanceof Error && error.name === 'ZodError') {
         return reply.code(400).send({ error: 'Validation failed', details: error });
+      }
+      return reply.code(500).send({ error: 'Failed to send OTP' });
+    }
+  },
+
+  async signupPhoneOTP(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = phoneInitiateSchema.parse(request.body);
+      const result = await authService.initiatePhoneOTP(input, true);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('already registered')) {
+          return reply.code(409).send({ error: error.message });
+        }
       }
       return reply.code(500).send({ error: 'Failed to send OTP' });
     }
@@ -125,4 +156,263 @@ export const authController = {
       return reply.code(500).send({ error: 'Login failed' });
     }
   },
+
+  async updateOtpSettings(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+      const input = updateOtpSettingsSchema.parse(request.body);
+      const result = await authService.updateOtpSettings(request.user.id, input);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('Cannot disable') || error.message.includes('required')) {
+          return reply.code(400).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to update OTP settings' });
+    }
+  },
+
+  async initiateEmailOTP(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = emailOtpInitiateSchema.parse(request.body);
+      const result = await authService.initiateEmailOTP(input.email);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ZodError') {
+        return reply.code(400).send({ error: 'Validation failed', details: error });
+      }
+      return reply.code(500).send({ error: 'Failed to send email OTP' });
+    }
+  },
+
+  async verifyEmailOTP(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = emailOtpVerifySchema.parse(request.body);
+      const result = await authService.verifyEmailOTP(input.email, input.code);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message === 'Invalid or expired OTP') {
+          return reply.code(401).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Email verification failed' });
+    }
+  },
+
+  async setPassword(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+      const input = setPasswordSchema.parse(request.body);
+      const result = await authService.setPassword(request.user.id, input.password);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ZodError') {
+        return reply.code(400).send({ error: 'Validation failed', details: error });
+      }
+      return reply.code(500).send({ error: 'Failed to set password' });
+    }
+  },
+
+  async generateBackupCodes(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+      const result = await authService.generateBackupCodes(request.user.id);
+      return reply.code(200).send(result);
+    } catch {
+      return reply.code(500).send({ error: 'Failed to generate backup codes' });
+    }
+  },
+
+  async getBackupCodes(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+      const result = await authService.getBackupCodes(request.user.id);
+      return reply.code(200).send(result);
+    } catch {
+      return reply.code(500).send({ error: 'Failed to get backup codes' });
+    }
+  },
+
+  async linkGoogle(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+      const input = googleLinkSchema.parse(request.body);
+      const result = await authService.linkGoogleAccount(request.user.id, input.idToken);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ZodError') {
+        return reply.code(400).send({ error: 'Validation failed', details: error });
+      }
+      return reply.code(500).send({ error: 'Failed to link Google account' });
+    }
+  },
+
+  // Password-based authentication handlers
+
+  async phonePasswordSignup(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = phonePasswordSignupSchema.parse(request.body);
+      const result = await authService.phonePasswordSignup(input);
+      return reply.code(201).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('already registered')) {
+          return reply.code(409).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to create account' });
+    }
+  },
+
+  async phonePasswordLogin(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = phonePasswordLoginSchema.parse(request.body);
+      const result = await authService.phonePasswordLogin(input);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('Invalid password') || error.message.includes('not registered')) {
+          return reply.code(401).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to login' });
+    }
+  },
+
+  async emailPasswordSignup(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = emailPasswordSignupSchema.parse(request.body);
+      const result = await authService.emailPasswordSignup(input);
+      return reply.code(201).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('already registered')) {
+          return reply.code(409).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to create account' });
+    }
+  },
+
+  async emailPasswordLogin(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = emailPasswordLoginSchema.parse(request.body);
+      const result = await authService.emailPasswordLogin(input);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('Invalid password') || error.message.includes('not registered')) {
+          return reply.code(401).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to login' });
+    }
+  },
+
+  // ============================================
+  // PARTNER 2FA REGISTRATION ENDPOINTS
+  // ============================================
+
+  async initiatePartnerRegister(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = partnerInitiateRegisterSchema.parse(request.body);
+      const result = await authService.initiatePartnerRegistration(input);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('already registered')) {
+          return reply.code(409).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to initiate registration' });
+    }
+  },
+
+  async verifyPartnerOTP(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = partnerVerifyOtpSchema.parse(request.body);
+      const result = await authService.verifyPartnerOTP(input);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('Invalid') || error.message.includes('expired')) {
+          return reply.code(401).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to verify OTP' });
+    }
+  },
+
+  async completePartnerRegister(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = partnerVerifyEmailSchema.parse(request.body);
+      const result = await authService.completePartnerRegistration(input.token);
+      return reply.code(201).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('Invalid') || error.message.includes('expired')) {
+          return reply.code(401).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to complete registration' });
+    }
+  },
+
+  async resendPartnerOTP(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = resendPartnerOtpSchema.parse(request.body);
+      const result = await authService.resendPartnerOTP(input.phone);
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('No pending') || error.message.includes('already verified')) {
+          return reply.code(400).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to resend OTP' });
+    }
+  },
 };
+

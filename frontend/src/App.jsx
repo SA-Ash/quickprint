@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Adminlogin from "./pages/AdminLogin";
+import VerifyPartnerEmail from "./pages/VerifyPartnerEmail";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth.jsx";
 import { OrdersProvider } from "./hooks/useOrders.jsx";
@@ -19,6 +20,7 @@ import PartnerSettings from "./routes/partner/PartnerSettings";
 import StudentDashboard from "./routes/student/Student.jsx";
 import StudentOrders from "./routes/student/StudentOrders";
 import StudentSettings from "./routes/student/StudentSettings";
+import OrderTracking from "./routes/student/OrderTracking.jsx";
 
 import RevenueChart from "./Components/admin/RevenueChart";
 import OrderAnalytics from "./Components/admin/OrderAnalytics";
@@ -50,6 +52,10 @@ const App = () => {
               <Route path="orders" element={<StudentOrders />} />
               <Route path="settings" element={<StudentSettings />} />
             </Route>
+            {/* Order tracking route */}
+            <Route path="/order/:orderId" element={<OrderTracking />} />
+            {/* Partner email verification (magic link landing) */}
+            <Route path="/partner/verify-email" element={<VerifyPartnerEmail />} />
             {/* Partner routes */}
             <Route
               path="/partner"

@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "AuthMethod" AS ENUM ('PHONE_OTP', 'EMAIL_OTP', 'PHONE_PASSWORD', 'EMAIL_PASSWORD');
+
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN     "authMethod" "AuthMethod" NOT NULL DEFAULT 'PHONE_OTP';

@@ -10,9 +10,11 @@ import {
   Mail,
   MapPin,
 } from "lucide-react";
+import AddressAutoFill from "../Components/AddressAutoFill";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
+import COLLEGES from "../constants/colleges.js";
 
 const Signup = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -30,11 +32,16 @@ const Signup = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpValues, setOtpValues] = useState(["", "", "", ""]);
   
-  // Address fields for partner
+  // Partner 2FA states
+  const [partnerOtpSent, setPartnerOtpSent] = useState(false);
+  const [partnerOtpValues, setPartnerOtpValues] = useState(["", "", "", ""]);
+  const [emailSent, setEmailSent] = useState(false);
+  
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
+  const [shopLocation, setShopLocation] = useState({ lat: 0, lng: 0 });
 
   const navigate = useNavigate();
   const { login, setUser } = useAuth();
@@ -60,16 +67,17 @@ const Signup = () => {
         setTimeout(() => {
           navigate("/student");
         }, 2000);
-      } else if (isPartner) {
-        // Partner signup - register via API
+      } else if (isPartner && !partnerOtpSent) {
+        // Partner signup - Step 1: Initiate (send OTP)
         if (password !== confirmPassword) {
           showError("Passwords do not match");
+          setIsLoading(false);
           return;
         }
 
         await login({
           type: "partner",
-          step: "register",
+          step: "initiate",
           email: email,
           password: password,
           name: name,
@@ -81,13 +89,24 @@ const Signup = () => {
             state: state,
             pincode: pincode,
           },
+          location: shopLocation.lat !== 0 ? shopLocation : undefined,
         });
         
-        showSuccess("Partner registration successful!");
-        setSignupSuccess(true);
-        setTimeout(() => {
-          navigate("/partner");
-        }, 2000);
+        setPartnerOtpSent(true);
+        showSuccess("OTP sent to your phone! Check your messages.");
+      } else if (isPartner && partnerOtpSent && !emailSent) {
+        // Partner signup - Step 2: Verify OTP (sends magic link)
+        const otpCode = partnerOtpValues.join("");
+        
+        await login({
+          type: "partner",
+          step: "verify-otp",
+          phone: `+91${phone}`,
+          code: otpCode,
+        });
+        
+        setEmailSent(true);
+        showSuccess("Phone verified! Check your email for the verification link.");
       }
     } catch (error) {
       console.error("Signup error:", error);
@@ -246,11 +265,11 @@ const Signup = () => {
                       required
                       disabled={otpSent}
                     >
-                      <option value="">Select Your College</option>
-                      <option value="ou">Osmania University</option>
-                      <option value="jntu">JNTU Hyderabad</option>
-                      <option value="iit">IIT Hyderabad</option>
-                      <option value="bits">BITS Pilani, Hyderabad</option>
+                      {COLLEGES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -432,9 +451,20 @@ const Signup = () => {
 
                 {/* Address Fields */}
                 <div className="border-t pt-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Shop Address
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Shop Address
+                    </label>
+                    <AddressAutoFill
+                      currentAddress={{ street }}
+                      onAddressUpdate={(addr) => {
+                        if (addr.city) setCity(addr.city);
+                        if (addr.state) setState(addr.state);
+                        if (addr.pincode) setPincode(addr.pincode);
+                        if (addr.lat && addr.lng) setShopLocation({ lat: addr.lat, lng: addr.lng });
+                      }}
+                    />
+                  </div>
                   <div className="space-y-3">
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -543,50 +573,128 @@ const Signup = () => {
                   <p className="text-red-500 text-sm">Passwords do not match</p>
                 )}
 
-                <button
-                  type="submit"
-                  disabled={isLoading || password !== confirmPassword || !password || !name || !shopName || !email || !phone || !street || !city || !state || !pincode}
-                  className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
-                    isLoading || signupSuccess
-                      ? "bg-green-600 hover:bg-green-700"
-                      : password === confirmPassword && password && name && shopName && email && phone && street && city && state && pincode
-                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
-                      : "bg-gray-400 cursor-not-allowed"
-                  }`}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Creating Account...
-                    </>
-                  ) : signupSuccess ? (
-                    <>
-                      <Check className="h-4 w-4 mr-1" />
-                      Signup Successful!
-                    </>
-                  ) : (
-                    "Create Partner Account"
-                  )}
-                </button>
+                {/* Email Sent - Show waiting message */}
+                {emailSent ? (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                    <Mail className="h-12 w-12 text-green-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-bold text-green-800 mb-2">Check Your Email</h3>
+                    <p className="text-green-700 mb-2">
+                      We've sent a verification link to <strong>{email}</strong>
+                    </p>
+                    <p className="text-sm text-green-600">
+                      Click the link in your email to complete registration. The link expires in 15 minutes.
+                    </p>
+                  </div>
+                ) : partnerOtpSent ? (
+                  /* OTP Verification Step */
+                  <>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">
+                        Enter OTP sent to +91{phone}
+                      </label>
+                      <div className="flex space-x-2 md:space-x-3">
+                        {[0, 1, 2, 3].map((index) => (
+                          <input
+                            key={index}
+                            id={`partner-otp-${index}`}
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={1}
+                            value={partnerOtpValues[index]}
+                            onChange={(e) => {
+                              if (/^\d*$/.test(e.target.value) && e.target.value.length <= 1) {
+                                const newOtpValues = [...partnerOtpValues];
+                                newOtpValues[index] = e.target.value;
+                                setPartnerOtpValues(newOtpValues);
+                                if (e.target.value && index < 3) {
+                                  document.getElementById(`partner-otp-${index + 1}`).focus();
+                                }
+                              }
+                            }}
+                            className="w-1/4 text-center py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                            required
+                            autoFocus={index === 0}
+                          />
+                        ))}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Check backend terminal for OTP (mock mode)</p>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isLoading || partnerOtpValues.some((value) => value === "")}
+                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
+                        isLoading
+                          ? "bg-blue-400 cursor-not-allowed"
+                          : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
+                      }`}
+                    >
+                      {isLoading ? "Verifying..." : "Verify OTP & Send Email Link"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await login({ type: "partner", step: "resend-otp", phone: `+91${phone}` });
+                          showSuccess("OTP resent successfully!");
+                        } catch (err) {
+                          showError(err.message);
+                        }
+                      }}
+                      className="w-full text-center text-sm text-blue-600 hover:underline"
+                    >
+                      Didn't receive OTP? Resend
+                    </button>
+                  </>
+                ) : (
+                  /* Initial Form Submit Button */
+                  <button
+                    type="submit"
+                    disabled={isLoading || password !== confirmPassword || !password || !name || !shopName || !email || !phone || !street || !city || !state || !pincode}
+                    className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
+                      isLoading || signupSuccess
+                        ? "bg-green-600 hover:bg-green-700"
+                        : password === confirmPassword && password && name && shopName && email && phone && street && city && state && pincode
+                        ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
+                        : "bg-gray-400 cursor-not-allowed"
+                    }`}
+                  >
+                    {isLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Sending OTP...
+                      </>
+                    ) : signupSuccess ? (
+                      <>
+                        <Check className="h-4 w-4 mr-1" />
+                        OTP Sent!
+                      </>
+                    ) : (
+                      "Continue with Phone Verification"
+                    )}
+                  </button>
+                )}
               </>
             )}
 

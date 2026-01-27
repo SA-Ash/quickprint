@@ -1,91 +1,40 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import UploadSection from "../../Components/UploadSection";
 import PrintOptions from "../../Components/PrintOptions";
 import ShopSelector from "../../Components/ShopSelector";
+import Cart from "../../Components/Cart";
 import { useAuth } from "../../hooks/useAuth.jsx";
 import { useOrders } from "../../hooks/useOrders.jsx";
 import { showSuccess, showError } from "../../utils/errorHandler.js";
 
 const Student = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { createOrder } = useOrders();
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [currentStep, setCurrentStep] = useState("options");
-  const [paymentStatus, setPaymentStatus] = useState("pending");
-
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
-
-  const processPayment = async (amount, orderData) => {
-    const res = await loadRazorpayScript();
-    if (!res) {
-      showError("Razorpay SDK failed to load");
-      return false;
-    }
-
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_RT08S4RBSJSsnk",
-      amount: amount * 100,
-      currency: "INR",
-      name: "Quick Print",
-      description: `Print order for ${orderData.fileName}`,
-      handler: async function (response) {
-        try {
-          const order = await createOrder({
-            ...orderData,
-            paymentId: response.razorpay_payment_id,
-            paymentStatus: "completed",
-          });
-          showSuccess(`Order placed successfully at ${selectedShop.name}!`);
-          setUploadedFile(null);
-          setSelectedShop(null);
-          setPaymentStatus("success");
-          setCurrentStep("upload");
-        } catch (error) {
-          console.error("Order creation failed:", error);
-          showError("Failed to place order. Please try again.");
-          setPaymentStatus("failed");
-        }
-      },
-      prefill: {
-        name: user?.name || "",
-        email: user?.email || "",
-        contact: user?.phone || "",
-      },
-      theme: {
-        color: "#6366f1",
-      },
-    };
-
-    const paymentObject = new window.Razorpay(options);
-    paymentObject.open();
-  };
+  const [currentStep, setCurrentStep] = useState("upload");
+  const [showCart, setShowCart] = useState(false);
+  const [currentPrintConfig, setCurrentPrintConfig] = useState(null);
+  const [userLocation, setUserLocation] = useState({ lat: 17.385, lng: 78.4867 });
 
   useEffect(() => {
-    if (paymentStatus === "processing") {
-      const totalCost = 50;
-      const orderData = {
-        fileName: uploadedFile?.name,
-        shopName: selectedShop?.name,
-        shopEmail: selectedShop?.email,
-        shopId: selectedShop?.id,
-        fileUrl: `https://example.com/uploads/${uploadedFile?.name}`,
-        totalCost: totalCost,
-        college: user?.college || "",
-      };
-      processPayment(totalCost, orderData);
-      setPaymentStatus("pending");
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        () => {
+          console.log("Using default location");
+        }
+      );
     }
-  }, [paymentStatus]);
+  }, []);
 
   const handleFileUpload = (file) => {
     setUploadedFile(file);
@@ -99,7 +48,7 @@ const Student = () => {
     setCurrentStep("options");
   };
 
-  const handlePlaceOrder = async (printConfig) => {
+  const handlePlaceOrder = (printConfig) => {
     if (!uploadedFile) {
       showError("Please upload a file first");
       return;
@@ -115,42 +64,52 @@ const Student = () => {
       return;
     }
 
+    setCurrentPrintConfig(printConfig);
+    setShowCart(true);
+  };
+
+  const handleProceedToPayment = async (pricing, paymentMethod = "cod") => {
+    if (!pricing) return;
+
     try {
       setIsPlacingOrder(true);
 
       const fileUrl = `https://example.com/uploads/${uploadedFile.name}`;
 
-      const basePerPage = printConfig.color ? 2 : 1;
-      const duplexMultiplier = printConfig.doubleSided ? 0.9 : 1;
-      const totalCost =
-        Math.round(
-          basePerPage *
-            printConfig.pages *
-            printConfig.copies *
-            duplexMultiplier *
-            100
-        ) / 100;
-
       const orderData = {
-        fileName: uploadedFile.name,
-        shopName: selectedShop.name,
-        shopEmail: selectedShop.email || "rishi.kumar199550@gmail.com",
         shopId: selectedShop.id,
-        fileUrl: fileUrl,
-        printConfig: {
-          pages: printConfig.pages || 1,
-          color: printConfig.color || false,
-          doubleSided: printConfig.doubleSided || false,
-          copies: printConfig.copies || 1,
-          paperSize: printConfig.paperSize || "A4",
-          paperType: printConfig.paperType || "standard",
-          binding: printConfig.binding || "No Binding",
+        file: {
+          url: fileUrl,
+          name: uploadedFile.name,
+          pages: currentPrintConfig?.pages || 1,
         },
-        totalCost: totalCost,
-        college: user.college || "",
+        printConfig: {
+          pages: 'all',
+          color: currentPrintConfig?.color || false,
+          copies: currentPrintConfig?.copies || 1,
+          binding: currentPrintConfig?.binding !== 'No Binding',
+          sides: currentPrintConfig?.doubleSided ? 'double' : 'single',
+        },
+        totalCost: pricing.total,
+        paymentMethod: paymentMethod,
       };
 
-      setPaymentStatus("processing");
+      // For COD, create order directly
+      // For online payments (paytm, upi), we'd integrate payment gateway here
+      // For now, mocking all as direct order creation
+      const order = await createOrder(orderData);
+
+      showSuccess(`Order placed successfully at ${selectedShop.businessName || selectedShop.name}!`);
+      
+      // Reset form
+      setUploadedFile(null);
+      setSelectedShop(null);
+      setShowCart(false);
+      setCurrentPrintConfig(null);
+      setCurrentStep("upload");
+
+      // Navigate to order tracking
+      navigate(`/order/${order.id}`);
     } catch (error) {
       console.error("Order creation failed:", error);
       showError("Failed to place order. Please try again.");
@@ -263,17 +222,6 @@ const Student = () => {
           <ShopSelector
             onShopSelect={handleShopSelect}
             selectedShop={selectedShop}
-            userLocation={(() => {
-              const storedLocation = localStorage.getItem("userLocation");
-              if (storedLocation) {
-                try {
-                  return JSON.parse(storedLocation);
-                } catch (error) {
-                  console.error("Failed to parse stored location:", error);
-                }
-              }
-              return { lng: 77.209, lat: 28.6139 };
-            })()}
           />
         )}
 
@@ -285,6 +233,18 @@ const Student = () => {
           />
         )}
       </div>
+
+      {showCart && (
+        <Cart
+          file={uploadedFile}
+          shop={selectedShop}
+          printConfig={currentPrintConfig}
+          userLocation={userLocation}
+          onClose={() => setShowCart(false)}
+          onProceedToPayment={handleProceedToPayment}
+          isLoading={isPlacingOrder}
+        />
+      )}
     </div>
   );
 };
