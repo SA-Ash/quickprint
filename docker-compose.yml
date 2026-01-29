@@ -41,15 +41,16 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - JWT_ACCESS_EXPIRY=${JWT_ACCESS_EXPIRY:-15m}
       - JWT_REFRESH_EXPIRY=${JWT_REFRESH_EXPIRY:-7d}
-      - TWILIO_SID=${TWILIO_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
       - AWS_REGION=${AWS_REGION:-ap-south-1}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - S3_BUCKET=${S3_BUCKET}
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
       - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - FRONTEND_URL=https://quickprint.com
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,9 +85,6 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
-      - TWILIO_SID=${TWILIO_SID}
-      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
-      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@quickprint.com}
     depends_on:
@@ -97,7 +95,6 @@ services:
     networks:
       - quickprint
 
-  # ===== Frontend (React + Nginx) =====
   frontend:
     build:
       context: ./frontend
@@ -107,6 +104,12 @@ services:
         - VITE_APP_ENV=production
         - VITE_USE_MOCK=false
         - VITE_RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+        - VITE_FIREBASE_API_KEY=${VITE_FIREBASE_API_KEY}
+        - VITE_FIREBASE_AUTH_DOMAIN=${VITE_FIREBASE_AUTH_DOMAIN}
+        - VITE_FIREBASE_PROJECT_ID=${VITE_FIREBASE_PROJECT_ID}
+        - VITE_FIREBASE_STORAGE_BUCKET=${VITE_FIREBASE_STORAGE_BUCKET}
+        - VITE_FIREBASE_MESSAGING_SENDER_ID=${VITE_FIREBASE_MESSAGING_SENDER_ID}
+        - VITE_FIREBASE_APP_ID=${VITE_FIREBASE_APP_ID}
     container_name: quickprint-frontend
     restart: unless-stopped
     depends_on:
@@ -115,12 +118,10 @@ services:
       - quickprint
     labels:
       - "traefik.enable=true"
-      # Main website routing
       - "traefik.http.routers.frontend.rule=Host(`quickprint.com`) || Host(`www.quickprint.com`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
-      # Redirect www to non-www
       - "traefik.http.middlewares.www-redirect.redirectregex.regex=^https://www\\.(.+)"
       - "traefik.http.middlewares.www-redirect.redirectregex.replacement=https://$${1}"
       - "traefik.http.middlewares.www-redirect.redirectregex.permanent=true"
