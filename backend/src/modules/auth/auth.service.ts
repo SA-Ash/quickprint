@@ -1018,9 +1018,9 @@ export const authService = {
       user = await prisma.user.create({
         data: {
           phone,
-          phoneVerified: true,
           role: 'STUDENT',
           name: phone, // Default name, can be updated later
+          authMethod: 'PHONE_OTP',
         },
       });
     } else {
@@ -1048,8 +1048,7 @@ export const authService = {
         email: user.email,
         name: user.name,
         role: user.role as 'STUDENT' | 'PARTNER' | 'ADMIN',
-        phoneVerified: user.phoneVerified,
-        emailVerified: user.emailVerified,
+        college: user.college,
       },
       tokens,
     };
