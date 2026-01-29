@@ -23,7 +23,7 @@ certificatesResolvers:
 providers:
   docker:
     exposedByDefault: false
-    network: quickprint
+    network: quickprint_quickprint
 
 log:
   level: INFO
