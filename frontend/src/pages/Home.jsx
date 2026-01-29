@@ -16,7 +16,7 @@ import {
   MapPin,
   Code,
 } from "lucide-react";
-import ExampleUsage from "../components/ExampleUsage.jsx";
+import ExampleUsage from "../Components/ExampleUsage.jsx";
 
 const Home = () => {
   const navigate = useNavigate();
