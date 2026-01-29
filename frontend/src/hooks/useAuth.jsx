@@ -47,18 +47,15 @@ export const AuthProvider = ({ children }) => {
 
       // Real API calls
       if (loginData.type === 'phone') {
-        if (loginData.step === 'initiate') {
-          const response = await authService.initiatePhoneOTP(loginData.phone);
-          return { success: true, message: response.message || 'OTP sent successfully' };
-        } else if (loginData.step === 'verify') {
-          const code = loginData.otp || loginData.code;
-          const response = await authService.verifyPhoneOTP(loginData.phone, code, loginData.college);
-          setUser(response.user);
-          // Connect WebSocket after successful login
-          const token = localStorage.getItem('accessToken');
-          if (token) wsService.connect(token, getToken);
-          return { success: true, user: response.user };
-        }
+        // Phone + Password authentication (default for students)
+        const response = await authService.phonePasswordLogin(
+          loginData.phone,
+          loginData.password
+        );
+        setUser(response.user);
+        const token = localStorage.getItem('accessToken');
+        if (token) wsService.connect(token, getToken);
+        return { success: true, user: response.user };
       } else if (loginData.type === 'phone_password') {
         // Phone + Password authentication
         if (loginData.step === 'signup') {
@@ -132,13 +129,6 @@ export const AuthProvider = ({ children }) => {
           if (token) wsService.connect(token, getToken);
           return { success: true, user: response.user };
         }
-      } else if (loginData.type === 'firebase') {
-        // Firebase Phone Auth - send ID token to backend for verification
-        const response = await authService.verifyFirebaseToken(loginData.idToken, loginData.isSignup);
-        setUser(response.user);
-        const token = localStorage.getItem('accessToken');
-        if (token) wsService.connect(token, getToken);
-        return { success: true, user: response.user };
       }
 
       throw new Error('Invalid login type');

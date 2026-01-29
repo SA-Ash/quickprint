@@ -988,69 +988,7 @@ export const authService = {
       throw new Error(result.message);
     }
 
+
     return { message: 'OTP resent successfully' };
-  },
-
-  // Firebase Phone Auth - verify token and return app JWT
-  async verifyFirebaseToken(idToken: string, isSignup = false): Promise<AuthResponse> {
-    // Import Firebase admin dynamically
-    const { verifyFirebaseToken: verifyToken } = await import('../../config/firebase.js');
-    
-    // Verify the Firebase ID token
-    const decodedToken = await verifyToken(idToken);
-    const phone = decodedToken.phone_number;
-    
-    if (!phone) {
-      throw new Error('Phone number not found in Firebase token');
-    }
-
-    // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { phone },
-    });
-
-    if (isSignup) {
-      // Signup flow
-      if (user) {
-        throw new Error('User with this phone already registered');
-      }
-      
-      user = await prisma.user.create({
-        data: {
-          phone,
-          role: 'STUDENT',
-          name: phone, // Default name, can be updated later
-          authMethod: 'PHONE_OTP',
-        },
-      });
-    } else {
-      // Login flow
-      if (!user) {
-        throw new Error('User not found. Please sign up first.');
-      }
-    }
-
-    const tokens = generateTokens(user.id);
-    
-    // Store refresh token
-    await prisma.refreshToken.create({
-      data: {
-        token: tokens.refreshToken,
-        userId: user.id,
-        expiresAt: parseExpiryToDate(env.JWT_REFRESH_EXPIRY),
-      },
-    });
-
-    return {
-      ...tokens,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        email: user.email,
-        name: user.name,
-        role: user.role as 'STUDENT' | 'PARTNER' | 'ADMIN',
-        college: user.college,
-      },
-    };
   },
 };

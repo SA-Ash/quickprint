@@ -8,8 +8,6 @@ export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/phone/verify', authController.verifyPhoneOTP);
   fastify.post('/phone/signup', authController.signupPhoneOTP);
 
-  // Firebase Phone Auth (recommended for production)
-  fastify.post('/firebase/verify', authController.verifyFirebaseToken);
 
   fastify.post('/email/initiate', authController.initiateEmailOTP);
   fastify.post('/email/verify', authController.verifyEmailOTP);
