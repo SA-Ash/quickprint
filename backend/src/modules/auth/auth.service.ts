@@ -1042,6 +1042,7 @@ export const authService = {
     });
 
     return {
+      ...tokens,
       user: {
         id: user.id,
         phone: user.phone,
@@ -1050,7 +1051,6 @@ export const authService = {
         role: user.role as 'STUDENT' | 'PARTNER' | 'ADMIN',
         college: user.college,
       },
-      tokens,
     };
   },
 };
