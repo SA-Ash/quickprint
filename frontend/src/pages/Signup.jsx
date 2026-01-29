@@ -9,6 +9,7 @@ import {
   User,
   Mail,
   MapPin,
+  Lock,
 } from "lucide-react";
 import AddressAutoFill from "../Components/AddressAutoFill";
 import { useNavigate } from "react-router-dom";
@@ -18,66 +19,65 @@ import COLLEGES from "../constants/colleges.js";
 
 const Signup = () => {
   const [isPartner, setIsPartner] = useState(false);
+  
+  // Common fields
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [college, setCollege] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [name, setName] = useState("");
-  const [shopName, setShopName] = useState("");
-  const [email, setEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpValues, setOtpValues] = useState(["", "", "", ""]);
   
-  // Partner 2FA states
-  const [partnerOtpSent, setPartnerOtpSent] = useState(false);
-  const [partnerOtpValues, setPartnerOtpValues] = useState(["", "", "", ""]);
-  const [emailSent, setEmailSent] = useState(false);
+  // Student specific
+  const [college, setCollege] = useState("");
   
+  // Partner specific
+  const [shopName, setShopName] = useState("");
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [pincode, setPincode] = useState("");
   const [shopLocation, setShopLocation] = useState({ lat: 0, lng: 0 });
 
+  const [isLoading, setIsLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+
   const navigate = useNavigate();
-  const { login, setUser } = useAuth();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
+    if (password !== confirmPassword) {
+      showError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      if (!isPartner && otpSent) {
-        // Student signup - verify OTP
-        const otpCode = otpValues.join("");
+      if (!isPartner) {
+        // Student signup - Direct with Password
         await login({
-          type: "phone",
-          step: "verify",
+          type: "phone_password",
+          step: "signup",
           phone: `+91${phone}`,
-          otp: otpCode,
+          password: password,
+          name: name,
           college: college,
         });
-        
-        showSuccess("Signup successful!");
+
+        showSuccess("Student account created successfully!");
         setSignupSuccess(true);
         setTimeout(() => {
           navigate("/student");
         }, 2000);
-      } else if (isPartner && !partnerOtpSent) {
-        // Partner signup - Step 1: Initiate (send OTP)
-        if (password !== confirmPassword) {
-          showError("Passwords do not match");
-          setIsLoading(false);
-          return;
-        }
-
+      } else {
+        // Partner signup - Direct Registration
         await login({
           type: "partner",
-          step: "initiate",
+          step: "register",
           email: email,
           password: password,
           name: name,
@@ -91,22 +91,12 @@ const Signup = () => {
           },
           location: shopLocation.lat !== 0 ? shopLocation : undefined,
         });
-        
-        setPartnerOtpSent(true);
-        showSuccess("OTP sent to your phone! Check your messages.");
-      } else if (isPartner && partnerOtpSent && !emailSent) {
-        // Partner signup - Step 2: Verify OTP (sends magic link)
-        const otpCode = partnerOtpValues.join("");
-        
-        await login({
-          type: "partner",
-          step: "verify-otp",
-          phone: `+91${phone}`,
-          code: otpCode,
-        });
-        
-        setEmailSent(true);
-        showSuccess("Phone verified! Check your email for the verification link.");
+
+        showSuccess("Partner account created successfully!");
+        setSignupSuccess(true);
+        setTimeout(() => {
+          navigate("/partner");
+        }, 2000);
       }
     } catch (error) {
       console.error("Signup error:", error);
@@ -116,41 +106,6 @@ const Signup = () => {
       setTimeout(() => {
         setSignupSuccess(false);
       }, 2000);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    if (phone.length === 10 && college && name && email) {
-      try {
-        setIsLoading(true);
-        
-        // Send OTP via real API
-        await login({
-          type: "phone",
-          step: "initiate",
-          phone: `+91${phone}`,
-        });
-        
-        setOtpSent(true);
-        showSuccess("OTP sent to your phone! Check backend terminal for mock OTP.");
-      } catch (error) {
-        console.error("OTP error:", error);
-        showError(error.message || "Failed to send OTP");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleOtpChange = (index, value) => {
-    if (/^\d*$/.test(value) && value.length <= 1) {
-      const newOtpValues = [...otpValues];
-      newOtpValues[index] = value;
-      setOtpValues(newOtpValues);
-
-      if (value && index < 3) {
-        document.getElementById(`otp-${index + 1}`).focus();
-      }
     }
   };
 
@@ -170,280 +125,114 @@ const Signup = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-            {!isPartner ? (
+            {/* Common Fields */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Full Name
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <User className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                  placeholder="Enter your full name"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                  placeholder="Enter your email address"
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Phone Number
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Phone className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="absolute inset-y-0 left-8 pl-1 flex items-center pointer-events-none text-gray-400 text-sm">
+                  +91
+                </div>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                  className="block w-full pl-16 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                  placeholder="9876543210"
+                  required
+                  pattern="[0-9]{10}"
+                />
+              </div>
+            </div>
+
+            {/* Student Specific */}
+            {!isPartner && (
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Select College
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Building2 className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <select
+                    value={college}
+                    onChange={(e) => setCollege(e.target.value)}
+                    className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                    required
+                  >
+                    <option value="">Select your college</option>
+                    {COLLEGES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Partner Specific */}
+            {isPartner && (
               <>
                 <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-sm font-semibold text-gray-700 mb-1"
-                  >
-                    Full Name
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">
+                    Shop Name
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-4 w-4 text-gray-400" />
+                      <Printer className="h-4 w-4 text-gray-400" />
                     </div>
                     <input
-                      id="name"
                       type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      value={shopName}
+                      onChange={(e) => setShopName(e.target.value)}
                       className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
-                      placeholder="Enter your full name"
-                      required
-                      disabled={otpSent}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-semibold text-gray-700 mb-1"
-                  >
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
-                      placeholder="Enter your email address"
-                      required
-                      disabled={otpSent}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-semibold text-gray-700 mb-1"
-                  >
-                    Phone Number
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      id="phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) =>
-                        setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-                      }
-                      className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
-                      placeholder="Enter your 10-digit phone number"
-                      required
-                      disabled={otpSent}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="college"
-                    className="block text-sm font-semibold text-gray-700 mb-1"
-                  >
-                    Select College
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Building2 className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <select
-                      id="college"
-                      value={college}
-                      onChange={(e) => setCollege(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
-                      required
-                      disabled={otpSent}
-                    >
-                      {COLLEGES.map((c) => (
-                        <option key={c.value} value={c.value}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {!otpSent ? (
-                  <button
-                    type="button"
-                    onClick={handleSendOtp}
-                    disabled={
-                      phone.length !== 10 || !college || !name || !email || isLoading
-                    }
-                    className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
-                      phone.length === 10 && college && name && email && !isLoading
-                        ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
-                        : "bg-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    {isLoading ? "Sending OTP..." : "Generate OTP"}
-                  </button>
-                ) : (
-                  <>
-                    <div>
-                      <label
-                        htmlFor="otp"
-                        className="block text-sm font-semibold text-gray-700 mb-1"
-                      >
-                        Enter OTP (check backend terminal for mock OTP)
-                      </label>
-                      <div className="flex space-x-2 md:space-x-3">
-                        {[0, 1, 2, 3].map((index) => (
-                          <input
-                            key={index}
-                            id={`otp-${index}`}
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            maxLength={1}
-                            value={otpValues[index]}
-                            onChange={(e) =>
-                              handleOtpChange(index, e.target.value)
-                            }
-                            className="w-1/4 text-center py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
-                            required
-                            autoFocus={index === 0}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={
-                        isLoading || otpValues.some((value) => value === "")
-                      }
-                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
-                        isLoading || signupSuccess
-                          ? "bg-green-600 hover:bg-green-700"
-                          : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
-                      }`}
-                    >
-                      {isLoading ? (
-                        <>
-                          <svg
-                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                          >
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            ></circle>
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                          </svg>
-                          Creating Account...
-                        </>
-                      ) : signupSuccess ? (
-                        <>
-                          <Check className="h-4 w-4 mr-1" />
-                          Signup Successful!
-                        </>
-                      ) : (
-                        "Create Account"
-                      )}
-                    </button>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                {/* Partner Signup Form */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Your Name
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <User className="h-4 w-4 text-gray-400" />
-                      </div>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Your full name"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Shop Name
-                    </label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Printer className="h-4 w-4 text-gray-400" />
-                      </div>
-                      <input
-                        type="text"
-                        value={shopName}
-                        onChange={(e) => setShopName(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Your shop name"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Email Address
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      placeholder="Enter your email address"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Phone Number
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) =>
-                        setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-                      }
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      placeholder="10-digit phone number"
+                      placeholder="Your shop name"
                       required
                     />
                   </div>
@@ -509,194 +298,119 @@ const Signup = () => {
                     />
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Min 8 characters"
-                        required
-                        minLength={8}
-                      />
-                      <button
-                        type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-gray-400" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">
-                      Confirm Password
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        placeholder="Confirm password"
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                        onClick={() =>
-                          setShowConfirmPassword(!showConfirmPassword)
-                        }
-                      >
-                        {showConfirmPassword ? (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-gray-400" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {password && confirmPassword && password !== confirmPassword && (
-                  <p className="text-red-500 text-sm">Passwords do not match</p>
-                )}
-
-                {/* Email Sent - Show waiting message */}
-                {emailSent ? (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                    <Mail className="h-12 w-12 text-green-600 mx-auto mb-3" />
-                    <h3 className="text-lg font-bold text-green-800 mb-2">Check Your Email</h3>
-                    <p className="text-green-700 mb-2">
-                      We've sent a verification link to <strong>{email}</strong>
-                    </p>
-                    <p className="text-sm text-green-600">
-                      Click the link in your email to complete registration. The link expires in 15 minutes.
-                    </p>
-                  </div>
-                ) : partnerOtpSent ? (
-                  /* OTP Verification Step */
-                  <>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-1">
-                        Enter OTP sent to +91{phone}
-                      </label>
-                      <div className="flex space-x-2 md:space-x-3">
-                        {[0, 1, 2, 3].map((index) => (
-                          <input
-                            key={index}
-                            id={`partner-otp-${index}`}
-                            type="text"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            maxLength={1}
-                            value={partnerOtpValues[index]}
-                            onChange={(e) => {
-                              if (/^\d*$/.test(e.target.value) && e.target.value.length <= 1) {
-                                const newOtpValues = [...partnerOtpValues];
-                                newOtpValues[index] = e.target.value;
-                                setPartnerOtpValues(newOtpValues);
-                                if (e.target.value && index < 3) {
-                                  document.getElementById(`partner-otp-${index + 1}`).focus();
-                                }
-                              }
-                            }}
-                            className="w-1/4 text-center py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
-                            required
-                            autoFocus={index === 0}
-                          />
-                        ))}
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2">Check backend terminal for OTP (mock mode)</p>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isLoading || partnerOtpValues.some((value) => value === "")}
-                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
-                        isLoading
-                          ? "bg-blue-400 cursor-not-allowed"
-                          : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
-                      }`}
-                    >
-                      {isLoading ? "Verifying..." : "Verify OTP & Send Email Link"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          await login({ type: "partner", step: "resend-otp", phone: `+91${phone}` });
-                          showSuccess("OTP resent successfully!");
-                        } catch (err) {
-                          showError(err.message);
-                        }
-                      }}
-                      className="w-full text-center text-sm text-blue-600 hover:underline"
-                    >
-                      Didn't receive OTP? Resend
-                    </button>
-                  </>
-                ) : (
-                  /* Initial Form Submit Button */
-                  <button
-                    type="submit"
-                    disabled={isLoading || password !== confirmPassword || !password || !name || !shopName || !email || !phone || !street || !city || !state || !pincode}
-                    className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
-                      isLoading || signupSuccess
-                        ? "bg-green-600 hover:bg-green-700"
-                        : password === confirmPassword && password && name && shopName && email && phone && street && city && state && pincode
-                        ? "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
-                        : "bg-gray-400 cursor-not-allowed"
-                    }`}
-                  >
-                    {isLoading ? (
-                      <>
-                        <svg
-                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
-                        Sending OTP...
-                      </>
-                    ) : signupSuccess ? (
-                      <>
-                        <Check className="h-4 w-4 mr-1" />
-                        OTP Sent!
-                      </>
-                    ) : (
-                      "Continue with Phone Verification"
-                    )}
-                  </button>
-                )}
               </>
             )}
+
+            {/* Password Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 pr-10 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                    placeholder="Min 8 chars"
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">
+                  Confirm
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                  </div>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="block w-full pl-10 pr-10 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base"
+                    placeholder="Confirm password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {password && confirmPassword && password !== confirmPassword && (
+              <p className="text-red-500 text-sm">Passwords do not match</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading || password !== confirmPassword}
+              className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition text-sm md:text-base ${
+                isLoading || signupSuccess
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-gradient-to-r from-blue-600 to-cyan-600 hover:opacity-90"
+              }`}
+            >
+              {isLoading ? (
+                <>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Creating Account...
+                </>
+              ) : signupSuccess ? (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  Account Created!
+                </>
+              ) : (
+                "Create Account"
+              )}
+            </button>
 
             <div className="text-center pt-4">
               <p className="text-gray-600 text-sm">
@@ -774,8 +488,17 @@ const Signup = () => {
             <button
               onClick={() => {
                 setIsPartner(!isPartner);
-                setOtpSent(false);
-                setOtpValues(["", "", "", ""]);
+                setPhone("");
+                setEmail("");
+                setName("");
+                setPassword("");
+                setConfirmPassword("");
+                setShopName("");
+                setStreet("");
+                setCity("");
+                setState("");
+                setPincode("");
+                setCollege("");
               }}
               className="bg-white text-blue-700 px-4 py-2 rounded-lg font-semibold shadow hover:bg-gray-100 transition text-sm md:text-base"
             >
