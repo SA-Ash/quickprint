@@ -8,8 +8,8 @@ FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# Install dependencies required for native modules
-RUN apk add --no-cache python3 make g++ libc6-compat
+# Install dependencies required for native modules and Prisma
+RUN apk add --no-cache python3 make g++ libc6-compat openssl openssl-dev
 
 # Copy package files
 COPY package.json package-lock.json ./
@@ -25,6 +25,9 @@ RUN npx prisma generate
 FROM node:20-alpine AS builder
 
 WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl openssl-dev
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
@@ -44,6 +47,9 @@ WORKDIR /app
 # Set production environment
 ENV NODE_ENV=production
 
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache openssl
+
 # Create non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 worker
@@ -62,3 +68,4 @@ USER worker
 
 # Start command
 CMD ["node", "dist/worker.js"]
+
