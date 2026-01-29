@@ -2,7 +2,8 @@
 // Get these values from Firebase Console -> Project Settings -> Your apps -> Web app
 
 import { initializeApp } from 'firebase/app';
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import type { ConfirmationResult } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,28 +18,72 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Disable app verification for testing (remove in production)
-// auth.settings.appVerificationDisabledForTesting = true;
+// Disable app verification for testing in development mode
+// WARNING: Remove this or set to false in production!
+if (import.meta.env.DEV || import.meta.env.VITE_APP_ENV === 'development') {
+  auth.settings.appVerificationDisabledForTesting = true;
+  console.log('⚠️ Firebase app verification disabled for testing');
+}
 
 // Setup reCAPTCHA verifier
 let recaptchaVerifier: RecaptchaVerifier | null = null;
 
-export const setupRecaptcha = (containerId: string = 'recaptcha-container'): RecaptchaVerifier => {
+// Initialize reCAPTCHA - must be called before sending OTP
+// Pass the ID of the button that triggers sign-in (e.g., 'send-otp-button')
+export const setupRecaptcha = (buttonId: string = 'send-otp-button'): RecaptchaVerifier => {
+  // Clear existing verifier if present
   if (recaptchaVerifier) {
-    recaptchaVerifier.clear();
+    try {
+      recaptchaVerifier.clear();
+    } catch (e) {
+      console.log('Error clearing reCAPTCHA:', e);
+    }
+    recaptchaVerifier = null;
   }
   
-  recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+  // Create new invisible reCAPTCHA attached to the button
+  recaptchaVerifier = new RecaptchaVerifier(auth, buttonId, {
     size: 'invisible',
     callback: () => {
-      console.log('reCAPTCHA verified');
+      // reCAPTCHA solved, can proceed with phone auth
+      console.log('reCAPTCHA invisible challenge solved!');
     },
     'expired-callback': () => {
-      console.log('reCAPTCHA expired');
-    },
+      // Response expired, user needs to solve again
+      console.log('reCAPTCHA response expired. Please try again.');
+      // Reset the verifier
+      if (recaptchaVerifier) {
+        try {
+          recaptchaVerifier.clear();
+        } catch (e) {
+          console.log('Error clearing expired reCAPTCHA:', e);
+        }
+        recaptchaVerifier = null;
+      }
+    }
   });
   
   return recaptchaVerifier;
+};
+
+// Get existing verifier or create new one
+export const getRecaptchaVerifier = (buttonId: string = 'send-otp-button'): RecaptchaVerifier => {
+  if (!recaptchaVerifier) {
+    return setupRecaptcha(buttonId);
+  }
+  return recaptchaVerifier;
+};
+
+// Clear the reCAPTCHA verifier
+export const clearRecaptcha = (): void => {
+  if (recaptchaVerifier) {
+    try {
+      recaptchaVerifier.clear();
+    } catch (e) {
+      console.log('Error clearing reCAPTCHA:', e);
+    }
+    recaptchaVerifier = null;
+  }
 };
 
 export const sendOtp = async (phoneNumber: string): Promise<ConfirmationResult> => {
@@ -58,4 +103,4 @@ export const verifyOtp = async (confirmationResult: ConfirmationResult, otp: str
   return idToken;
 };
 
-export { RecaptchaVerifier, ConfirmationResult };
+export type { ConfirmationResult };

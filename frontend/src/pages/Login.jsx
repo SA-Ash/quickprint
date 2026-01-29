@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Phone, Building2, Eye, EyeOff, Check, Printer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
 import LocationPermission from "../Components/LocationPermission.jsx";
 import COLLEGES from "../constants/colleges.js";
-import { auth, setupRecaptcha, sendOtp, verifyOtp } from "../config/firebase";
+import { auth, setupRecaptcha, sendOtp, verifyOtp, clearRecaptcha } from "../config/firebase";
 
 const Login = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -21,7 +21,6 @@ const Login = () => {
   const [showLocationPermission, setShowLocationPermission] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
   const [confirmationResult, setConfirmationResult] = useState(null);
-  const recaptchaContainerRef = useRef(null);
 
   const navigate = useNavigate();
   const { login, setUser } = useAuth();
@@ -29,13 +28,10 @@ const Login = () => {
   // Initialize reCAPTCHA on component mount
   useEffect(() => {
     // Only setup for student login (not partner)
-    if (!isPartner && recaptchaContainerRef.current) {
-      try {
-        setupRecaptcha('recaptcha-container');
-      } catch (error) {
-        console.error('Failed to setup reCAPTCHA:', error);
-      }
-    }
+    // Clear reCAPTCHA when switching modes
+    return () => {
+      clearRecaptcha();
+    };
   }, [isPartner]);
 
   const handleSubmit = async (e) => {
@@ -104,8 +100,8 @@ const Login = () => {
       try {
         setIsLoading(true);
         
-        // Setup reCAPTCHA if not already done
-        setupRecaptcha('recaptcha-container');
+        // Setup reCAPTCHA attached to the Send OTP button
+        setupRecaptcha('send-otp-button');
         
         // Send OTP via Firebase
         const formattedPhone = `+91${phone}`;
@@ -185,9 +181,6 @@ const Login = () => {
 
   return (
     <>
-      {/* Hidden reCAPTCHA container */}
-      <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
-      
       {showLocationPermission && (
         <LocationPermission
           onLocationGranted={handleLocationGranted}
@@ -343,6 +336,7 @@ const Login = () => {
 
                   {!otpSent ? (
                     <button
+                      id="send-otp-button"
                       type="button"
                       onClick={handleSendOtp}
                       disabled={phone.length !== 10 || !college || isLoading}

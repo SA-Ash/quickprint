@@ -15,7 +15,7 @@ entryPoints:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: admin@quickprint.com  
+      email: thequickprint2617@gmail.com
       storage: /letsencrypt/acme.json
       httpChallenge:
         entryPoint: web

@@ -21,7 +21,7 @@ services:
       - quickprint
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.quickprint.com`)"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.thequickprint.in`)"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.entrypoints=websecure"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
@@ -50,7 +50,7 @@ services:
       - S3_BUCKET=${S3_BUCKET}
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
       - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
-      - FRONTEND_URL=https://quickprint.com
+      - FRONTEND_URL=https://thequickprint.in
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,7 +62,7 @@ services:
       - quickprint
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api.rule=Host(`api.quickprint.com`)"
+      - "traefik.http.routers.api.rule=Host(`api.thequickprint.in`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
       - "traefik.http.services.api.loadbalancer.server.port=3000"
@@ -71,7 +71,7 @@ services:
       - "traefik.http.middlewares.api-ratelimit.ratelimit.period=1s"
       - "traefik.http.routers.api.middlewares=api-ratelimit"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS"
-      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=https://quickprint.com,https://www.quickprint.com"
+      - "traefik.http.middlewares.api-cors.headers.accesscontrolalloworiginlist=https://thequickprint.in,https://www.thequickprint.in"
       - "traefik.http.middlewares.api-cors.headers.accesscontrolmaxage=100"
       - "traefik.http.middlewares.api-cors.headers.addvaryheader=true"
 
@@ -86,7 +86,7 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@quickprint.com}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@thequickprint.in}
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,7 +100,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - VITE_API_BASE_URL=https://api.quickprint.com
+        - VITE_API_BASE_URL=https://api.thequickprint.in
         - VITE_APP_ENV=production
         - VITE_USE_MOCK=false
         - VITE_RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
@@ -118,7 +118,7 @@ services:
       - quickprint
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=Host(`quickprint.com`) || Host(`www.quickprint.com`)"
+      - "traefik.http.routers.frontend.rule=Host(`thequickprint.in`) || Host(`www.thequickprint.in`)"
       - "traefik.http.routers.frontend.entrypoints=websecure"
       - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
@@ -181,7 +181,7 @@ services:
       retries: 5
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.quickprint.com`)"
+      - "traefik.http.routers.rabbitmq.rule=Host(`rabbitmq.thequickprint.in`)"
       - "traefik.http.routers.rabbitmq.entrypoints=websecure"
       - "traefik.http.routers.rabbitmq.tls.certresolver=letsencrypt"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
@@ -209,7 +209,7 @@ services:
       retries: 3
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.minio.rule=Host(`files.quickprint.com`)"
+      - "traefik.http.routers.minio.rule=Host(`files.thequickprint.in`)"
       - "traefik.http.routers.minio.entrypoints=websecure"
       - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
       - "traefik.http.services.minio.loadbalancer.server.port=9000"
