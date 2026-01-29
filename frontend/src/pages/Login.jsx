@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Phone, Building2, Eye, EyeOff, Check, Printer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
 import LocationPermission from "../Components/LocationPermission.jsx";
 import COLLEGES from "../constants/colleges.js";
+import { auth, setupRecaptcha, sendOtp, verifyOtp } from "../config/firebase";
 
 const Login = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -16,12 +17,26 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const [otpValues, setOtpValues] = useState(["", "", "", ""]);
+  const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [showLocationPermission, setShowLocationPermission] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const recaptchaContainerRef = useRef(null);
 
   const navigate = useNavigate();
   const { login, setUser } = useAuth();
+
+  // Initialize reCAPTCHA on component mount
+  useEffect(() => {
+    // Only setup for student login (not partner)
+    if (!isPartner && recaptchaContainerRef.current) {
+      try {
+        setupRecaptcha('recaptcha-container');
+      } catch (error) {
+        console.error('Failed to setup reCAPTCHA:', error);
+      }
+    }
+  }, [isPartner]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29,14 +44,23 @@ const Login = () => {
 
     try {
       if (!isPartner && otpSent) {
+        // Firebase flow - verify OTP and get ID token
         const otpCode = otpValues.join("");
+        
+        if (!confirmationResult) {
+          throw new Error('OTP session expired. Please request a new OTP.');
+        }
+
+        // Verify OTP with Firebase and get ID token
+        const idToken = await verifyOtp(confirmationResult, otpCode);
+        
+        // Send Firebase token to backend
         await login({
-          type: "phone",
-          step: "verify",
-          phone: `+91${phone}`,
-          otp: otpCode,
+          type: "firebase",
+          idToken: idToken,
           college: college,
         });
+        
         showSuccess("Login successful!");
         setLoginSuccess(true);
 
@@ -57,7 +81,16 @@ const Login = () => {
         setShowLocationPermission(true);
       }
     } catch (error) {
-      showError(error.message || "Login failed. Please try again.");
+      console.error('Login error:', error);
+      if (error.code === 'auth/invalid-verification-code') {
+        showError("Invalid OTP. Please try again.");
+      } else if (error.code === 'auth/code-expired') {
+        showError("OTP expired. Please request a new one.");
+        setOtpSent(false);
+        setConfirmationResult(null);
+      } else {
+        showError(error.message || "Login failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
       setTimeout(() => {
@@ -70,15 +103,26 @@ const Login = () => {
     if (phone.length === 10 && college) {
       try {
         setIsLoading(true);
-        await login({
-          type: "phone",
-          step: "initiate",
-          phone: `+91${phone}`,
-        });
+        
+        // Setup reCAPTCHA if not already done
+        setupRecaptcha('recaptcha-container');
+        
+        // Send OTP via Firebase
+        const formattedPhone = `+91${phone}`;
+        const result = await sendOtp(formattedPhone);
+        
+        setConfirmationResult(result);
         setOtpSent(true);
         showSuccess("OTP sent to your phone!");
       } catch (error) {
-        showError(error.message || "Failed to send OTP");
+        console.error('Failed to send OTP:', error);
+        if (error.code === 'auth/invalid-phone-number') {
+          showError("Invalid phone number format.");
+        } else if (error.code === 'auth/too-many-requests') {
+          showError("Too many attempts. Please try again later.");
+        } else {
+          showError(error.message || "Failed to send OTP");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -91,7 +135,8 @@ const Login = () => {
       newOtpValues[index] = value;
       setOtpValues(newOtpValues);
 
-      if (value && index < 3) {
+      // Auto-focus next input (Firebase uses 6-digit OTP)
+      if (value && index < 5) {
         document.getElementById(`otp-${index + 1}`).focus();
       }
     }
@@ -122,17 +167,27 @@ const Login = () => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData("text").replace(/\D/g, "");
 
-    if (pastedData.length === 4) {
+    if (pastedData.length === 6) {
       const newOtp = pastedData.split("");
       setOtpValues(newOtp);
 
-      const lastInput = document.getElementById("otp-3");
+      const lastInput = document.getElementById("otp-5");
       lastInput?.focus();
+    }
+  };
+
+  const handleKeyDown = (index, e) => {
+    // Handle backspace - move to previous input
+    if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
+      document.getElementById(`otp-${index - 1}`).focus();
     }
   };
 
   return (
     <>
+      {/* Hidden reCAPTCHA container */}
+      <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
+      
       {showLocationPermission && (
         <LocationPermission
           onLocationGranted={handleLocationGranted}
@@ -205,7 +260,8 @@ const Login = () => {
                 onClick={() => {
                   setIsPartner(!isPartner);
                   setOtpSent(false);
-                  setOtpValues(["", "", "", ""]);
+                  setOtpValues(["", "", "", "", "", ""]);
+                  setConfirmationResult(null);
                 }}
                 className="bg-white text-purple-700 px-4 py-2 rounded-lg font-semibold shadow hover:bg-gray-100 transition text-sm md:text-base"
               >
@@ -289,13 +345,39 @@ const Login = () => {
                     <button
                       type="button"
                       onClick={handleSendOtp}
-                      disabled={phone.length !== 10 || !college}
-                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${phone.length === 10 && college
+                      disabled={phone.length !== 10 || !college || isLoading}
+                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${phone.length === 10 && college && !isLoading
                         ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
                         : "bg-gray-400 cursor-not-allowed"
                         }`}
                     >
-                      Generate OTP
+                      {isLoading ? (
+                        <>
+                          <svg
+                            className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          Sending OTP...
+                        </>
+                      ) : (
+                        "Send OTP"
+                      )}
                     </button>
                   ) : (
                     <>
@@ -304,10 +386,10 @@ const Login = () => {
                           htmlFor="otp"
                           className="block text-sm font-semibold text-gray-700 mb-1"
                         >
-                          Enter OTP
+                          Enter 6-digit OTP
                         </label>
                         <div className="flex space-x-2 md:space-x-3">
-                          {[0, 1, 2, 3].map((index) => (
+                          {[0, 1, 2, 3, 4, 5].map((index) => (
                             <input
                               key={index}
                               id={`otp-${index}`}
@@ -319,8 +401,9 @@ const Login = () => {
                               onChange={(e) =>
                                 handleOtpChange(index, e.target.value)
                               }
+                              onKeyDown={(e) => handleKeyDown(index, e)}
                               onPaste={handleOtpPaste}
-                              className="w-1/4 text-center py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm md:text-base"
+                              className="w-12 h-12 text-center py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-lg font-semibold"
                               required
                               autoFocus={index === 0}
                             />
@@ -370,6 +453,18 @@ const Login = () => {
                         ) : (
                           "Login"
                         )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtpSent(false);
+                          setOtpValues(["", "", "", "", "", ""]);
+                          setConfirmationResult(null);
+                        }}
+                        className="w-full text-sm text-purple-600 hover:text-purple-700 hover:underline"
+                      >
+                        Change phone number
                       </button>
                     </>
                   )}

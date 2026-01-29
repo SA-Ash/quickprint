@@ -42,6 +42,11 @@ const envSchema = z.object({
 
   // Frontend URL (for magic links)
   FRONTEND_URL: z.string().default('http://localhost:5173'),
+
+  // Firebase (for phone auth)
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

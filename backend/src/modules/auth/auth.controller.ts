@@ -414,5 +414,30 @@ export const authController = {
       return reply.code(500).send({ error: 'Failed to resend OTP' });
     }
   },
+
+  // Firebase Phone Auth - verify Firebase ID token and issue JWT
+  async verifyFirebaseToken(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { idToken, isSignup } = request.body as { idToken: string; isSignup?: boolean };
+      
+      if (!idToken) {
+        return reply.code(400).send({ error: 'Firebase ID token is required' });
+      }
+
+      const result = await authService.verifyFirebaseToken(idToken, isSignup);
+      return reply.code(200).send(result);
+    } catch (error) {
+      console.error('[Firebase Auth] Error:', error);
+      if (error instanceof Error) {
+        if (error.message.includes('not found')) {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error.message.includes('already registered')) {
+          return reply.code(409).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Firebase authentication failed' });
+    }
+  },
 };
 

@@ -132,6 +132,13 @@ export const AuthProvider = ({ children }) => {
           if (token) wsService.connect(token, getToken);
           return { success: true, user: response.user };
         }
+      } else if (loginData.type === 'firebase') {
+        // Firebase Phone Auth - send ID token to backend for verification
+        const response = await authService.verifyFirebaseToken(loginData.idToken, loginData.isSignup);
+        setUser(response.user);
+        const token = localStorage.getItem('accessToken');
+        if (token) wsService.connect(token, getToken);
+        return { success: true, user: response.user };
       }
 
       throw new Error('Invalid login type');

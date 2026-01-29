@@ -269,6 +269,26 @@ export const authService = {
     async resendPartnerOTP(phone) {
         return apiClient.post('/auth/partner/register/resend-otp', { phone }, { auth: false });
     },
+
+    // ============================================
+    // FIREBASE PHONE AUTH
+    // ============================================
+
+    /**
+     * Verify Firebase ID token and get app JWT
+     * @param {string} idToken - Firebase ID token from phone verification
+     * @param {boolean} isSignup - Whether this is a signup (creates user if not exists)
+     */
+    async verifyFirebaseToken(idToken, isSignup = false) {
+        const response = await apiClient.post('/auth/firebase/verify', { idToken, isSignup }, { auth: false });
+
+        if (response.tokens?.accessToken) {
+            apiClient.setTokens(response.tokens.accessToken, response.tokens.refreshToken);
+            localStorage.setItem('user', JSON.stringify(response.user));
+        }
+
+        return response;
+    },
 };
 
 export default authService;
