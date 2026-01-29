@@ -37,7 +37,9 @@ export async function buildApp() {
       : [
           'https://quickprint.com',
           'https://www.quickprint.com',
-          'https://thequickprint.in'
+          'https://thequickprint.in',
+          'http://13.234.238.248',
+          'http://13.234.238.248:3000'
         ],
     credentials: true,
   });
