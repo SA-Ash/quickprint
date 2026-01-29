@@ -3,9 +3,10 @@ import { z } from 'zod';
 export const createOrderSchema = z.object({
   shopId: z.string().min(1),
   file: z.object({
-    url: z.string().url(),
+    url: z.string().min(1), // S3 object key or URL
     name: z.string().min(1),
     pages: z.number().int().positive(),
+    fileId: z.string().optional(), // Optional: database file ID for tracking
   }),
   printConfig: z.object({
     pages: z.string().default('all'),

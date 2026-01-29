@@ -14,8 +14,9 @@ import {
   DollarSign,
   BarChart3,
   Settings,
+  LogOut
 } from "lucide-react";
-import { useNavigate, NavLink, useLocation } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import Notifications from "./Notifications";
 
@@ -25,135 +26,33 @@ const Navbar = ({ userType = "partner" }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-
-  if (userType === "admin") {
-    const navigationTabs = [
-      { id: "overview", label: "Overview", path: "/admin", icon: BarChart3 },
-      {
-        id: "orders",
-        label: "Orders",
-        path: "/admin/orders",
-        icon: ShoppingCart,
-      },
-      {
-        id: "partners",
-        label: "Partners",
-        path: "/admin/partners",
-        icon: Printer,
-      },
-      { id: "users", label: "Users", path: "/admin/users", icon: Users },
-      {
-        id: "revenue",
-        label: "Revenue",
-        path: "/admin/revenue",
-        icon: DollarSign,
-      },
-    ];
-
-    return (
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-        <div className="px-4 sm:px-6 py-3 sm:py-4 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-end gap-1">
-              <h1 className="text-black font-bold text-xl sm:text-2xl">
-                Quick<span className="text-blue-600">Print</span>
-              </h1>
-              <span className="text-neutral-500 font-semibold text-sm sm:text-base hidden md:block capitalize">
-                CEO dashboard
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
-                <Settings className="w-5 h-5" />
-              </button>
-
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user?.name?.[0]?.toUpperCase() || "A"}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.name || "Admin"}
-                  </p>
-                  <p className="text-xs text-gray-500">Super Admin</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <ul className="flex space-x-1 overflow-x-auto mt-2">
-            {navigationTabs.map((tab) => (
-              <li key={tab.id}>
-                <NavLink
-                  to={tab.path}
-                  end={tab.id === "overview"}
-                  className={({ isActive }) =>
-                    `flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
-                      isActive
-                        ? "bg-[#141d2f] text-white shadow-sm"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                    }`
-                  }
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </header>
-    );
-  }
 
   const menuItems = {
     partner: [
-      { id: "dashboard", label: "Dashboard", path: "/partner", end: true },
-      {
-        id: "orders",
-        label: "Orders",
-        path: "/partner/orders",
-        notificationCount: 5,
-      },
-      { id: "reports", label: "Reports", path: "/partner/reports" },
-      { id: "settings", label: "Settings", path: "/partner/settings" },
+      { id: "dashboard", label: "Dashboard", path: "/partner", icon: BarChart3, end: true },
+      { id: "orders", label: "Orders", path: "/partner/orders", icon: ShoppingCart, count: 0 },
+      { id: "reports", label: "Reports", path: "/partner/reports", icon: Printer },
+      { id: "settings", label: "Settings", path: "/partner/settings", icon: Settings },
     ],
     student: [
-      { id: "dashboard", label: "Upload & Print", path: "/student", end: true },
-      {
-        id: "orders",
-        label: "My Orders",
-        path: "/student/orders",
-        notificationCount: 2,
-      },
-      { id: "settings", label: "Profile", path: "/student/settings" },
+      { id: "dashboard", label: "Upload & Print", path: "/student", icon: Printer, end: true },
+      { id: "orders", label: "My Orders", path: "/student/orders", icon: ShoppingCart, count: 2 },
+      { id: "settings", label: "Profile", path: "/student/settings", icon: User },
     ],
   };
 
+  // just connect length of orders in database it 'count' here in menuItems 
+
   const userData = {
-    partner: {
-      name: user?.name || "Name Here",
-      email: user?.email || "rajesh@quickprint.com",
-      userId: "QP-PARTNER-1234",
-      role: "Printing Manager",
-      contactIcon: Mail,
-    },
-    student: {
-      name: user?.name || "Name Here",
-      phone: user?.phone || "+91 9390244436",
-      college: user?.college || "CBIT College",
-      role: "Student",
-      contactIcon: Phone,
-    },
+    partner: { name: user?.name || "Partner", sub: user?.email || "ashr@quickprint.com", contactIcon: Mail },
+    student: { name: user?.name || "Student", sub: user?.phone || "+91 9390244436", contactIcon: Phone },
   };
 
-  const currentUserData = userData[userType];
   const currentMenuItems = menuItems[userType];
+  const currentUserData = userData[userType];
   const ContactIcon = currentUserData.contactIcon;
+
+  const totalNotifications = currentMenuItems.reduce((acc, item) => acc + (item.count || 0), 0);
 
   const handleSignOut = () => {
     navigate("/login");
@@ -161,45 +60,35 @@ const Navbar = ({ userType = "partner" }) => {
   };
 
   return (
-    <nav className="h-16 md:h-20 shadow-md flex items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 bg-white sticky top-0 z-50">
+    <nav className="h-16 md:h-20 flex items-center justify-between px-3 sm:px-4 md:px-6 lg:px-8 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-50">
       <div className="flex items-center">
-        <div className="md:hidden mr-2 sm:mr-3">
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-1.5 sm:p-2 rounded-md text-gray-700 hover:bg-gray-100"
-          >
+        <div className="md:hidden mr-2">
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 rounded-md hover:bg-gray-100">
             {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
         </div>
-
         <div className="flex items-end gap-1">
-          <h1 className="text-black font-bold text-xl sm:text-2xl">
-            Quick<span className="text-blue-600">Print</span>
-          </h1>
-          <span className="text-neutral-500 font-semibold text-sm sm:text-base hidden md:block capitalize">
-            {userType}
-          </span>
+          <h1 className="text-black font-bold text-xl sm:text-2xl">Quick<span className="text-blue-600">Print</span></h1>
+          <span className="text-neutral-500 font-semibold text-sm hidden md:block capitalize">{userType}</span>
         </div>
       </div>
 
-      <ul className="hidden md:flex items-center gap-2 lg:gap-4">
+      <ul className="hidden md:flex items-center gap-1 bg-slate-50 border border-slate-100 p-1 rounded-xl">
         {currentMenuItems.map((item) => (
-          <li key={item.id} className="relative">
+          <li key={item.id}>
             <NavLink
               to={item.path}
-              end={item.end || false}
+              end={item.end}
               className={({ isActive }) =>
-                `px-3 py-1.5 lg:px-4 lg:py-2 rounded-full font-medium text-sm lg:text-base transition-all duration-200 relative ${
-                  isActive
-                    ? "bg-blue-100 text-blue-600"
-                    : "text-neutral-700 hover:bg-gray-100"
+                `relative flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${isActive ? "bg-white text-blue-600 shadow-sm border border-slate-200/50" : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
                 }`
               }
             >
-              {item.label}
-              {item.notificationCount && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 lg:h-5 lg:w-5 bg-red-500 text-white text-[10px] lg:text-xs flex items-center justify-center rounded-full">
-                  {item.notificationCount}
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
+              {item.count > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-white">
+                  {item.count}
                 </span>
               )}
             </NavLink>
@@ -207,74 +96,56 @@ const Navbar = ({ userType = "partner" }) => {
         ))}
       </ul>
 
-      <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative">
-          <button
-            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-            className="p-1.5 sm:p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-full relative"
-          >
-            <Bell size={18} />
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full">
-              {userType === "partner" ? 3 : 2}
-            </span>
+          <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="p-2 text-gray-600 hover:bg-blue-50 rounded-full relative transition-colors">
+            <Bell size={20} />
+            {totalNotifications > 0 && (
+              <span className="absolute top-1.5 right-1.5 h-3.5 w-3.5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-bold text-white">
+                {totalNotifications > 9 ? "9+" : totalNotifications}
+              </span>
+            )}
           </button>
           {isNotificationsOpen && <Notifications userType={userType} />}
         </div>
 
         <div className="relative">
-          <button
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
-            className="flex items-center gap-1.5 sm:gap-2 p-1 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-              <User size={14} />
+          <button onClick={() => setIsProfileOpen(!isProfileOpen)} className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 transition-all">
+            <div className="group flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-[0_-1px_0_0px_#d4d4d8_inset,0_0_0_1px_#f4f4f5_inset,0_0.5px_0_1.5px_#fff_inset] active:translate-y-px transition-transform">
+              <User size={16} className="text-zinc-950" />
             </div>
-            <span className="hidden lg:inline text-xs sm:text-sm font-medium text-gray-700 truncate max-w-[120px]">
-              {userType === "partner"
-                ? currentUserData.email
-                : currentUserData.phone}
-            </span>
-            <ChevronDown size={14} className="text-gray-500 hidden md:block" />
+            <div className="hidden lg:block text-left">
+              <p className="text-xs font-bold text-slate-900 truncate max-w-[100px]">{currentUserData.name}</p>
+              <p className="text-[10px] text-slate-500 truncate max-w-[100px]">{currentUserData.sub}</p>
+            </div>
+            <ChevronDown size={14} className={`text-slate-400 hidden md:block transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isProfileOpen && (
-            <div className="absolute right-0 mt-2 w-48 sm:w-56 bg-white rounded-md shadow-lg py-2 z-50 border border-gray-200">
-              <div className="px-3 sm:px-4 py-2 sm:py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {currentUserData.name}
-                </p>
-                <div className="flex items-center mt-1">
-                  <ContactIcon size={10} className="text-gray-400 mr-1" />
-                  <p className="text-xs text-gray-500 truncate">
-                    {userType === "partner"
-                      ? currentUserData.email
-                      : currentUserData.phone}
-                  </p>
-                </div>
-                {currentUserData.college && (
-                  <div className="flex items-center mt-1">
-                    <School size={10} className="text-gray-400 mr-1" />
-                    <p className="text-xs text-gray-500 truncate">
-                      {currentUserData.college}
-                    </p>
-                  </div>
-                )}
-                <p className="text-xs text-gray-500 capitalize mt-1">
-                  {currentUserData.role}
-                </p>
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-1">
+              <div className="px-4 py-2 border-b border-gray-50">
+                <p className="text-sm font-bold text-gray-900">{currentUserData.name}</p>
+                <p className="text-xs text-gray-500 truncate">{currentUserData.sub}</p>
               </div>
-              <div className="px-2 py-1">
-                <button
-                  onClick={handleSignOut}
-                  className="w-full text-left px-2 py-1.5 text-xs sm:text-sm text-red-600 hover:bg-red-50 rounded-md"
-                >
-                  Sign out
+              <div className="p-1">
+                <button onClick={handleSignOut} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors font-medium">
+                  <LogOut size={16} /> Sign out
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {isMobileMenuOpen && (
+        <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-100 p-4 space-y-2 md:hidden shadow-xl">
+          {currentMenuItems.map((item) => (
+            <NavLink key={item.id} to={item.path} className="flex items-center gap-3 p-3 rounded-lg hover:bg-blue-50 text-slate-600 font-medium">
+              <item.icon size={20} /> {item.label}
+            </NavLink>
+          ))}
+        </div>
+      )}
     </nav>
   );
 };

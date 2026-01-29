@@ -1,3 +1,4 @@
+import toast from "react-hot-toast";
 
 export const handleApiError = (error) => {
   if (error.response) {
@@ -63,11 +64,12 @@ export const showError = (error) => {
   const errorInfo = handleApiError(error);
   console.error('API Error:', errorInfo);
 
-  alert(errorInfo.message);
+
+  toast.error(errorInfo.message)
 };
 
 export const showSuccess = (message) => {
   console.log('Success:', message);
 
-  alert(message);
+  toast.success(message)
 };

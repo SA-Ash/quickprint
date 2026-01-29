@@ -15,6 +15,7 @@ import {
   EyeOff,
   Loader2,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.jsx";
 import { userService } from "../../services/user.service.js";
 import { authService } from "../../services/auth.service.js";
@@ -23,14 +24,14 @@ import { showSuccess, showError } from "../../utils/errorHandler.js";
 
 const StudentSettings = () => {
   const { user, setUser } = useAuth();
-  
+
   // Original values for change detection
   const [originalData, setOriginalData] = useState({
     fullName: "",
     phone: "",
     college: "",
   });
-  
+
   const [formData, setFormData] = useState({
     fullName: "",
     phone: "",
@@ -69,7 +70,7 @@ const StudentSettings = () => {
         };
         setFormData(data);
         setOriginalData(data);
-        
+
         setOtpSettings(prev => ({
           ...prev,
           enabled: profile.otpEnabled ?? true,
@@ -90,7 +91,7 @@ const StudentSettings = () => {
       };
       setFormData(data);
       setOriginalData(data);
-      
+
       // Then load full profile from API
       loadProfile();
     }
@@ -148,29 +149,29 @@ const StudentSettings = () => {
         name: formData.fullName,
         college: formData.college,
       };
-      
+
       // Only update phone if changed and valid
       if (formData.phone !== originalData.phone) {
-        const phoneWithCode = formData.phone.startsWith("+91") 
-          ? formData.phone 
+        const phoneWithCode = formData.phone.startsWith("+91")
+          ? formData.phone
           : `+91${formData.phone.replace(/\D/g, "").slice(-10)}`;
         updateData.phone = phoneWithCode;
       }
 
       const updatedProfile = await userService.updateProfile(updateData);
-      
+
       // Update local user context
       const updatedUser = { ...user, ...updatedProfile };
       localStorage.setItem("user", JSON.stringify(updatedUser));
       if (setUser) setUser(updatedUser);
-      
+
       // Update original data after successful save
       setOriginalData({
         fullName: formData.fullName,
         phone: formData.phone,
         college: formData.college,
       });
-      
+
       showSuccess("Profile updated successfully!");
     } catch (error) {
       console.error("Update failed:", error);
@@ -200,7 +201,7 @@ const StudentSettings = () => {
           setIsOtpLoading(false);
           return;
         }
-        
+
         // Set password first
         await authService.setPassword(passwordData.password, passwordData.confirmPassword);
       }
@@ -268,9 +269,8 @@ const StudentSettings = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Sidebar */}
           <div
-            className={`lg:col-span-1 space-y-6 fixed lg:static inset-0 z-30 bg-white lg:bg-transparent p-6 lg:p-0 transform ${
-              isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-            } lg:translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto lg:overflow-visible`}
+            className={`lg:col-span-1 space-y-6 fixed lg:static inset-0 z-30 bg-white lg:bg-transparent p-6 lg:p-0 transform ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
+              } lg:translate-x-0 transition-transform duration-300 ease-in-out overflow-y-auto lg:overflow-visible`}
           >
             {/* Profile Card */}
             <div className="bg-white rounded-xl shadow-md p-4 md:p-6 border border-gray-200">
@@ -346,7 +346,9 @@ const StudentSettings = () => {
               </h3>
               <div className="space-y-2 md:space-y-3">
                 <button
-                  onClick={() => alert("Contact support for assistance")}
+                  onClick={() =>
+                    toast("Contact support for assistance")
+                  }
                   className="w-full text-left py-2 px-4 rounded-lg flex items-center text-blue-600 hover:bg-blue-50 transition text-sm md:text-base"
                 >
                   <HelpCircle className="w-4 h-4 md:w-5 md:h-5 mr-2" />
@@ -429,11 +431,10 @@ const StudentSettings = () => {
                 <button
                   type="submit"
                   disabled={!hasChanges || isLoading}
-                  className={`w-full font-medium py-2.5 md:py-3 rounded-lg transition duration-200 shadow-md flex items-center justify-center text-sm md:text-base ${
-                    hasChanges && !isLoading
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white hover:shadow-lg"
-                      : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  }`}
+                  className={`w-full font-medium py-2.5 md:py-3 rounded-lg transition duration-200 shadow-md flex items-center justify-center text-sm md:text-base ${hasChanges && !isLoading
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white hover:shadow-lg"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
                 >
                   {isLoading ? (
                     <>

@@ -27,12 +27,16 @@ export const workerEnv = {
   USE_MOCK_PUSH: process.env.NODE_ENV === 'development',
 };
 
+// Alias for compatibility
+export const env = workerEnv;
+
 export function validateWorkerEnv(): void {
   if (!workerEnv.DATABASE_URL) {
     throw new Error('DATABASE_URL is required');
   }
   console.log('[Worker] Environment loaded:', {
     NODE_ENV: workerEnv.NODE_ENV,
+    RABBITMQ_URL: workerEnv.RABBITMQ_URL ? '(configured)' : '(not set)',
     USE_MOCK_SMS: workerEnv.USE_MOCK_SMS,
     USE_MOCK_EMAIL: workerEnv.USE_MOCK_EMAIL,
   });

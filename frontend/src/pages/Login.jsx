@@ -118,6 +118,19 @@ const Login = () => {
     }
   };
 
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "");
+
+    if (pastedData.length === 4) {
+      const newOtp = pastedData.split("");
+      setOtpValues(newOtp);
+
+      const lastInput = document.getElementById("otp-3");
+      lastInput?.focus();
+    }
+  };
+
   return (
     <>
       {showLocationPermission && (
@@ -263,7 +276,7 @@ const Login = () => {
                         required
                         disabled={otpSent}
                       >
-                          {COLLEGES.map((c) => (
+                        {COLLEGES.map((c) => (
                           <option key={c.value} value={c.value}>
                             {c.label}
                           </option>
@@ -277,11 +290,10 @@ const Login = () => {
                       type="button"
                       onClick={handleSendOtp}
                       disabled={phone.length !== 10 || !college}
-                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${
-                        phone.length === 10 && college
-                          ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
-                          : "bg-gray-400 cursor-not-allowed"
-                      }`}
+                      className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${phone.length === 10 && college
+                        ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
+                        : "bg-gray-400 cursor-not-allowed"
+                        }`}
                     >
                       Generate OTP
                     </button>
@@ -307,6 +319,7 @@ const Login = () => {
                               onChange={(e) =>
                                 handleOtpChange(index, e.target.value)
                               }
+                              onPaste={handleOtpPaste}
                               className="w-1/4 text-center py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm md:text-base"
                               required
                               autoFocus={index === 0}
@@ -320,11 +333,10 @@ const Login = () => {
                         disabled={
                           isLoading || otpValues.some((value) => value === "")
                         }
-                        className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${
-                          isLoading || loginSuccess
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
-                        }`}
+                        className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${isLoading || loginSuccess
+                          ? "bg-green-600 hover:bg-green-700"
+                          : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
+                          }`}
                       >
                         {isLoading ? (
                           <>
@@ -420,11 +432,10 @@ const Login = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${
-                      isLoading || loginSuccess
-                        ? "bg-green-600 hover:bg-green-700"
-                        : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
-                    }`}
+                    className={`w-full flex justify-center items-center py-2 md:py-3 px-4 border border-transparent rounded-lg shadow text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base ${isLoading || loginSuccess
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90"
+                      }`}
                   >
                     {isLoading ? (
                       <>

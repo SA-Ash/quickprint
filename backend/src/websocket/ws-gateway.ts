@@ -84,6 +84,11 @@ class WebSocketGateway {
       socket.on(WS_EVENTS.ERROR, (error) => {
         console.error(`[WS] Socket error for user ${socket.userId}:`, error);
       });
+
+      // Heartbeat handler - respond to client pings
+      socket.on('ping', () => {
+        socket.emit('pong');
+      });
     });
 
     console.log('[WS] WebSocket gateway initialized');

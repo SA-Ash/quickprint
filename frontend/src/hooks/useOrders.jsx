@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback } from "react";
 import { useAuth } from "./useAuth.jsx";
 import { orderService } from "../services/order.service";
+import { notificationService } from "../services/notification.service";
 import { wsService, WS_EVENTS } from "../services/websocket.service";
 
 const OrdersContext = createContext();
@@ -79,10 +80,10 @@ export const OrdersProvider = ({ children }) => {
         // Real API call
         const response = await orderService.getUserOrders();
         const ordersData = response.orders || response.data || response;
-        
+
         // Map each order to component-friendly format
         const parsedOrders = Array.isArray(ordersData) ? ordersData.map(mapOrderFromAPI) : [];
-        
+
         setOrders(parsedOrders);
       }
     } catch (err) {
@@ -103,12 +104,19 @@ export const OrdersProvider = ({ children }) => {
       }
 
       // Real API call - include paymentMethod
+      // Ensure file data is properly structured
+      const fileData = orderData.file || {};
+      if (!fileData.url) {
+        throw new Error('File URL is required. Please upload a file first.');
+      }
+      
       const response = await orderService.createOrder({
         shopId: orderData.shopId,
-        file: orderData.file || {
-          url: orderData.fileUrl || 'https://example.com/uploads/document.pdf',
-          name: orderData.fileName || 'Document.pdf',
-          pages: orderData.file?.pages || orderData.printConfig?.pages || 1,
+        file: {
+          url: fileData.url,
+          name: fileData.name || 'Document.pdf',
+          pages: fileData.pages || 1,
+          fileId: fileData.fileId, // Include file ID for database tracking
         },
         printConfig: {
           pages: 'all',
@@ -122,7 +130,7 @@ export const OrdersProvider = ({ children }) => {
 
       const newOrder = response.order || response;
       const mappedOrder = mapOrderFromAPI(newOrder);
-      
+
       // Add to local state
       setOrders((prevOrders) => [mappedOrder, ...prevOrders]);
 
@@ -275,30 +283,58 @@ export const OrdersProvider = ({ children }) => {
     }
   };
 
-  const markNotificationRead = (notificationId) => {
-    const updatedNotifications = notifications.map((notif) =>
-      notif.id === notificationId ? { ...notif, read: true } : notif
-    );
-    setNotifications(updatedNotifications);
-    if (user) {
-      localStorage.setItem(
-        `notifications_${user.id}`,
-        JSON.stringify(updatedNotifications)
+  const markNotificationRead = async (notificationId) => {
+    try {
+      if (!USE_MOCK) {
+        await notificationService.markAsRead(notificationId);
+      }
+      const updatedNotifications = notifications.map((notif) =>
+        notif.id === notificationId ? { ...notif, read: true } : notif
       );
+      setNotifications(updatedNotifications);
+      if (USE_MOCK && user) {
+        localStorage.setItem(
+          `notifications_${user.id}`,
+          JSON.stringify(updatedNotifications)
+        );
+      }
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
     }
   };
 
-  const markAllNotificationsRead = () => {
-    const updatedNotifications = notifications.map((notif) => ({
-      ...notif,
-      read: true,
-    }));
-    setNotifications(updatedNotifications);
-    if (user) {
-      localStorage.setItem(
-        `notifications_${user.id}`,
-        JSON.stringify(updatedNotifications)
-      );
+  const markAllNotificationsRead = async () => {
+    try {
+      if (!USE_MOCK) {
+        await notificationService.markAllAsRead();
+      }
+      const updatedNotifications = notifications.map((notif) => ({
+        ...notif,
+        read: true,
+      }));
+      setNotifications(updatedNotifications);
+      if (USE_MOCK && user) {
+        localStorage.setItem(
+          `notifications_${user.id}`,
+          JSON.stringify(updatedNotifications)
+        );
+      }
+    } catch (err) {
+      console.error("Failed to mark all notifications as read:", err);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      if (!USE_MOCK) {
+        await notificationService.clearAllNotifications();
+      }
+      setNotifications([]);
+      if (USE_MOCK && user) {
+        localStorage.removeItem(`notifications_${user.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to clear notifications:", err);
     }
   };
 
@@ -312,40 +348,61 @@ export const OrdersProvider = ({ children }) => {
       loadNotifications();
 
       // Subscribe to real-time WebSocket events (only when not in mock mode)
+      // Note: WebSocket connection is handled by useAuth, we just subscribe to events here
       if (!USE_MOCK) {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-          wsService.connect(token);
+        // Listen for order status changes
+        const handleStatusChange = (data) => {
+          console.log('[WS] Student: Order status changed:', data);
+          const normalizedStatus = (data.newStatus || data.status || "").toUpperCase();
+          setOrders((prevOrders) =>
+            prevOrders.map((order) =>
+              order.id === data.orderId
+                ? { ...order, status: normalizedStatus, updatedAt: new Date(data.updatedAt || Date.now()) }
+                : order
+            )
+          );
 
-          // Listen for order status changes
-          const handleStatusChange = (data) => {
-            setOrders((prevOrders) =>
-              prevOrders.map((order) =>
-                order.id === data.orderId
-                  ? { ...order, status: data.newStatus, updatedAt: new Date(data.updatedAt) }
-                  : order
-              )
-            );
-
-            // Add notification for status change
-            addNotification({
-              id: `notif_${Date.now()}`,
-              type: "status_update",
-              title: `Order ${data.orderNumber} Updated`,
-              message: `Your order status changed to ${data.newStatus}`,
-              timestamp: new Date(),
-              read: false,
-              orderId: data.orderId,
-            });
+          // Add notification for status change
+          const statusLabels = {
+            PENDING: 'Pending',
+            ACCEPTED: 'Accepted',
+            PRINTING: 'Printing',
+            READY: 'Ready for Pickup',
+            COMPLETED: 'Completed',
+            CANCELLED: 'Cancelled'
           };
-
-          wsService.subscribe(WS_EVENTS.ORDER_STATUS_CHANGED, handleStatusChange);
-
-          // Cleanup on unmount
-          return () => {
-            wsService.unsubscribe(WS_EVENTS.ORDER_STATUS_CHANGED, handleStatusChange);
+          
+          const notification = {
+            id: `notif_${Date.now()}`,
+            type: 'order_updated',
+            title: 'Order Status Update',
+            message: `Your order is now ${statusLabels[normalizedStatus] || normalizedStatus}`,
+            timestamp: new Date(),
+            read: false,
+            orderId: data.orderId
           };
-        }
+          setNotifications((prev) => [notification, ...prev]);
+        };
+
+        // Listen for new notifications from backend
+        const handleNewNotification = (data) => {
+          setNotifications((prevNotifications) => [
+            {
+              ...data,
+              timestamp: new Date(data.createdAt || data.timestamp || Date.now()),
+            },
+            ...prevNotifications,
+          ]);
+        };
+
+        const unsubStatus = wsService.subscribe(WS_EVENTS.ORDER_STATUS_CHANGED, handleStatusChange);
+        const unsubNotif = wsService.subscribe(WS_EVENTS.NOTIFICATION_NEW, handleNewNotification);
+
+        // Cleanup on unmount
+        return () => {
+          unsubStatus();
+          unsubNotif();
+        };
       }
     } else {
       setOrders([]);
@@ -353,19 +410,38 @@ export const OrdersProvider = ({ children }) => {
     }
   }, [user]);
 
-  const loadNotifications = () => {
+  const loadNotifications = async () => {
     if (!user) return;
-    const storedNotifications = localStorage.getItem(
-      `notifications_${user.id}`
-    );
-    if (storedNotifications) {
-      const parsedNotifications = JSON.parse(storedNotifications).map(
-        (notif) => ({
-          ...notif,
-          timestamp: new Date(notif.timestamp),
-        })
-      );
-      setNotifications(parsedNotifications);
+    
+    try {
+      if (USE_MOCK) {
+        // Load from localStorage in mock mode
+        const storedNotifications = localStorage.getItem(
+          `notifications_${user.id}`
+        );
+        if (storedNotifications) {
+          const parsedNotifications = JSON.parse(storedNotifications).map(
+            (notif) => ({
+              ...notif,
+              timestamp: new Date(notif.timestamp),
+            })
+          );
+          setNotifications(parsedNotifications);
+        }
+      } else {
+        // Real API call
+        const response = await notificationService.getNotifications();
+        const notificationsData = response.notifications || response.data || response;
+        const parsedNotifications = Array.isArray(notificationsData) 
+          ? notificationsData.map((notif) => ({
+              ...notif,
+              timestamp: new Date(notif.createdAt),
+            }))
+          : [];
+        setNotifications(parsedNotifications);
+      }
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
     }
   };
 
@@ -379,6 +455,7 @@ export const OrdersProvider = ({ children }) => {
     loadOrders,
     markNotificationRead,
     markAllNotificationsRead,
+    clearAllNotifications,
     getUnreadCount,
   };
 

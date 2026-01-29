@@ -28,11 +28,14 @@ import PartnerManagement from "./Components/admin/PartnerManagement";
 import UserInsights from "./Components/admin/UserInsights";
 
 import Admin from "./routes/admin/Admin.jsx";
+import { Toaster } from "react-hot-toast";
 
 const App = () => {
   const [timeRange] = useState("month");
+
   return (
     <AuthProvider>
+      <Toaster position="bottom-right" reverseOrder={false} />
       <OrdersProvider>
         <Router>
           <Routes>

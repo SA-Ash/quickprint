@@ -1,20 +1,20 @@
 import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database/prisma.client.js';
+import { connectRabbitMQ, disconnectRabbitMQ } from './infrastructure/queue/rabbitmq.client.js';
 import { wsGateway } from './websocket/index.js';
 
 async function main() {
   console.log('Starting QuickPrint Backend...');
 
   await connectDatabase();
+  await connectRabbitMQ();
 
   const app = await buildApp();
 
   try {
-    // Start HTTP server
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     
-    // Initialize WebSocket gateway with the underlying HTTP server
     const httpServer = app.server;
     wsGateway.initialize(httpServer);
 
@@ -32,6 +32,7 @@ async function main() {
     process.on(signal, async () => {
       console.log(`\n${signal} received, shutting down...`);
       await app.close();
+      await disconnectRabbitMQ();
       await disconnectDatabase();
       process.exit(0);
     });

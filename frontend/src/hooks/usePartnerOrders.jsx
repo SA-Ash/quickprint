@@ -38,11 +38,49 @@ export const PartnerOrdersProvider = ({ children }) => {
         const response = await orderService.getShopOrders();
         const ordersData = response.orders || response.data || response;
         
-        const parsedOrders = Array.isArray(ordersData) ? ordersData.map((order) => ({
-          ...order,
-          createdAt: new Date(order.createdAt),
-          updatedAt: new Date(order.updatedAt),
-        })) : [];
+        // College short name mapping
+        const collegeShortNames = {
+          'IIT Kharagpur': 'IITKGP',
+          'Indian Institute of Technology Kharagpur': 'IITKGP',
+          'NIT Durgapur': 'NITDGP',
+          'Jadavpur University': 'JU',
+          'IIEST Shibpur': 'IIEST',
+          'Presidency University': 'PU',
+          'Calcutta University': 'CU',
+          'St. Xavier\'s College': 'SXC',
+        };
+        
+        const parsedOrders = Array.isArray(ordersData) ? ordersData.map((order) => {
+          const printConfig = order.printConfig || {};
+          const file = order.file || {};
+          const userCollege = order.user?.college || '';
+          const collegeShort = collegeShortNames[userCollege] || userCollege.split(' ').map(w => w[0]).join('').toUpperCase() || 'N/A';
+          
+          return {
+            ...order,
+            // Map user to customer for frontend compatibility
+            customer: order.user ? {
+              name: order.user.name || 'Student',
+              phone: order.user.phone || '',
+            } : null,
+            // College short name from user data
+            college: collegeShort,
+            // Extract copies from printConfig
+            copies: printConfig.copies || 1,
+            // Extract file name
+            fileName: file.name || 'Document.pdf',
+            // Status in lowercase for frontend matching
+            status: (order.status || 'PENDING').toLowerCase(),
+            // Payment status
+            paymentStatus: order.paymentMethod === 'cod' 
+              ? (order.payment?.status === 'completed' ? 'paid' : 'unpaid')
+              : (order.payment?.status === 'completed' ? 'paid' : 'pending'),
+            paymentMethod: order.paymentMethod || 'cod',
+            // Timestamps
+            createdAt: new Date(order.createdAt),
+            updatedAt: new Date(order.updatedAt),
+          };
+        }) : [];
         
         setOrders(parsedOrders);
       }
@@ -80,7 +118,8 @@ export const PartnerOrdersProvider = ({ children }) => {
         if (order.id === orderId) {
           return {
             ...order,
-            status: newStatus,
+            // Convert to lowercase for frontend status styling
+            status: newStatus.toLowerCase(),
             statusText: statusMap[newStatus] || newStatus,
             updatedAt: new Date(),
           };
@@ -188,41 +227,56 @@ export const PartnerOrdersProvider = ({ children }) => {
       loadOrders();
 
       // Subscribe to real-time WebSocket events (only when not in mock mode)
+      // Note: WebSocket connection is handled by useAuth, we just subscribe to events here
       if (!USE_MOCK) {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-          wsService.connect(token);
+        // Listen for new orders
+        const handleNewOrder = (data) => {
+          // Refresh orders when a new order comes in
+          loadOrders();
 
-          // Listen for new orders
-          const handleNewOrder = (data) => {
-            // Refresh orders when a new order comes in
-            loadOrders();
-
-            // Add notification for new order
-            const notification = {
-              id: `notif_${Date.now()}`,
-              type: "order_created",
-              title: "New Order Received!",
-              message: `Order ${data.orderNumber} - ₹${data.totalCost}`,
-              timestamp: new Date(),
-              read: false,
-              orderId: data.orderId,
-            };
-
-            setNotifications((prev) => [notification, ...prev]);
-            localStorage.setItem(
-              `partner_notifications_${user.email || user.id}`,
-              JSON.stringify([notification, ...notifications])
-            );
+          // Add notification for new order
+          const notification = {
+            id: `notif_${Date.now()}`,
+            type: "order_created",
+            title: "New Order Received!",
+            message: `Order ${data.orderNumber} - ₹${data.totalCost}`,
+            timestamp: new Date(),
+            read: false,
+            orderId: data.orderId,
           };
 
-          wsService.subscribe(WS_EVENTS.ORDER_CREATED, handleNewOrder);
+          setNotifications((prev) => [notification, ...prev]);
+          localStorage.setItem(
+            `partner_notifications_${user.email || user.id}`,
+            JSON.stringify([notification, ...notifications])
+          );
+        };
 
-          // Cleanup on unmount
-          return () => {
-            wsService.unsubscribe(WS_EVENTS.ORDER_CREATED, handleNewOrder);
-          };
-        }
+        // Listen for status changes (from other sources or sync)
+        const handleStatusChange = (data) => {
+          console.log('[WS] Order status changed:', data);
+          // Update the order in local state without full refresh
+          setOrders((prevOrders) =>
+            prevOrders.map((order) =>
+              order.id === data.orderId
+                ? {
+                    ...order,
+                    status: (data.status || data.newStatus || '').toLowerCase(),
+                    updatedAt: new Date(),
+                  }
+                : order
+            )
+          );
+        };
+
+        const unsubNewOrder = wsService.subscribe(WS_EVENTS.ORDER_CREATED, handleNewOrder);
+        const unsubStatusChange = wsService.subscribe(WS_EVENTS.ORDER_STATUS_CHANGED, handleStatusChange);
+
+        // Cleanup on unmount
+        return () => {
+          unsubNewOrder();
+          unsubStatusChange();
+        };
       }
     } else {
       setOrders([]);

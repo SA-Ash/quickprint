@@ -33,7 +33,8 @@ const envSchema = z.object({
   PAYTM_WEBSITE: z.string().default('DEFAULT'),
   API_BASE_URL: z.string().default('http://localhost:3000'),
 
-  // AWS S3
+  // AWS S3 / MinIO
+  S3_ENDPOINT: z.string().optional(),
   AWS_REGION: z.string().optional(),
   AWS_ACCESS_KEY_ID: z.string().optional(),
   AWS_SECRET_ACCESS_KEY: z.string().optional(),

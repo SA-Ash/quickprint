@@ -23,6 +23,8 @@ const AllOrders = () => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [newStatus, setNewStatus] = useState("");
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printOrder, setPrintOrder] = useState(null);
 
   const navigate = useNavigate();
 
@@ -31,6 +33,7 @@ const AllOrders = () => {
     "pending",
     "accepted",
     "printing",
+    "ready",
     "completed",
     "cancelled",
   ];
@@ -39,6 +42,7 @@ const AllOrders = () => {
     pending: "bg-amber-50 text-amber-700 border border-amber-200",
     accepted: "bg-blue-50 text-blue-700 border border-blue-200",
     printing: "bg-violet-50 text-violet-700 border border-violet-200",
+    ready: "bg-teal-50 text-teal-700 border border-teal-200",
     completed: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     cancelled: "bg-red-50 text-red-700 border border-red-200",
   };
@@ -47,6 +51,7 @@ const AllOrders = () => {
     pending: "Pending",
     accepted: "Accepted",
     printing: "Printing",
+    ready: "Ready",
     completed: "Completed",
     cancelled: "Cancelled",
   };
@@ -74,7 +79,8 @@ const AllOrders = () => {
 
   const handleStatusUpdate = (order) => {
     setSelectedOrder(order);
-    setNewStatus(order.status);
+    // Convert to uppercase for backend API
+    setNewStatus((order.status || 'pending').toUpperCase());
     setShowStatusModal(true);
   };
 
@@ -85,6 +91,83 @@ const AllOrders = () => {
       setSelectedOrder(null);
       setNewStatus("");
     }
+  };
+
+  const handlePrintDocument = (order) => {
+    setPrintOrder(order);
+    setShowPrintModal(true);
+  };
+
+  const executePrint = async () => {
+    try {
+      const fileId = printOrder?.file?.fileId;
+      let printUrl = printOrder?.file?.url || printOrder?.fileUrl;
+      
+      // If we have a fileId, fetch the signed URL from the backend
+      if (fileId) {
+        const token = localStorage.getItem('accessToken');
+        const response = await fetch(`http://localhost:3000/api/files/${fileId}/download`, {
+          headers: {
+            'Authorization': token ? `Bearer ${token}` : '',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          printUrl = data.downloadUrl;
+        }
+      }
+      
+      if (printUrl) {
+        // Open the document in a new window and trigger print
+        const printWindow = window.open(printUrl, '_blank');
+        if (printWindow) {
+          printWindow.onload = () => {
+            setTimeout(() => printWindow.print(), 500);
+          };
+        }
+        setShowPrintModal(false);
+      } else {
+        alert('Document URL not available');
+      }
+    } catch (error) {
+      console.error('Error printing document:', error);
+      alert('Failed to load document for printing');
+    }
+  };
+
+  const exportOrders = () => {
+    // Create CSV content
+    const headers = ['Order ID', 'Customer', 'Date', 'College', 'File', 'Copies', 'Total', 'Payment Method', 'Payment Status', 'Status'];
+    
+    const csvRows = filteredOrders.map(order => [
+      order.orderNumber,
+      order.customer?.name || 'N/A',
+      formatDate(order.createdAt),
+      order.college || 'N/A',
+      order.fileName || 'N/A',
+      order.copies || 1,
+      order.totalCost,
+      order.paymentMethod || 'N/A',
+      order.paymentStatus || 'N/A',
+      statusLabels[order.status] || order.status
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    // Create and download file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -163,7 +246,10 @@ const AllOrders = () => {
                 </div>
               </div>
 
-              <button className="px-6 py-3 flex items-center gap-2 border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 lg:w-auto justify-center bg-white shadow-sm">
+              <button 
+                onClick={exportOrders}
+                className="px-6 py-3 flex items-center gap-2 border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 lg:w-auto justify-center bg-white shadow-sm"
+              >
                 <Download size={16} />
                 <span>Export</span>
               </button>
@@ -272,10 +358,22 @@ const AllOrders = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 hidden lg:table-cell">
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-1.5"></div>
-                            Paid
-                          </span>
+                          {order.paymentStatus === 'paid' ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mr-1.5"></div>
+                              Paid
+                            </span>
+                          ) : order.paymentMethod === 'cod' ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                              <div className="w-1.5 h-1.5 bg-amber-400 rounded-full mr-1.5"></div>
+                              COD
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-50 text-gray-600 border border-gray-200">
+                              <div className="w-1.5 h-1.5 bg-gray-400 rounded-full mr-1.5"></div>
+                              Pending
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4">
                           <span
@@ -318,8 +416,9 @@ const AllOrders = () => {
                               <CheckCircle size={16} />
                             </button>
                             <button
-                              className="p-2 rounded-lg border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-600 hover:text-gray-700 transition-all duration-200 group-hover:shadow-sm hidden sm:block"
-                              title="Print receipt"
+                              onClick={() => handlePrintDocument(order)}
+                              className="p-2 rounded-lg border border-gray-200 hover:border-violet-300 hover:bg-violet-50 text-gray-600 hover:text-violet-600 transition-all duration-200 group-hover:shadow-sm hidden sm:block"
+                              title="Print document"
                             >
                               <Printer size={16} />
                             </button>
@@ -414,17 +513,37 @@ const AllOrders = () => {
               <label className="block text-sm font-semibold text-gray-900 mb-3">
                 Select New Status
               </label>
-              <select
-                value={newStatus}
-                onChange={(e) => setNewStatus(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50/50 transition-all duration-200"
-              >
-                <option value="pending">Pending</option>
-                <option value="accepted">Accepted</option>
-                <option value="printing">Printing</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+              <div className="space-y-2">
+                {[
+                  { value: 'PENDING', label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+                  { value: 'ACCEPTED', label: 'Accepted', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+                  { value: 'PRINTING', label: 'Printing', color: 'bg-violet-100 text-violet-700 border-violet-200' },
+                  { value: 'READY', label: 'Ready', color: 'bg-teal-100 text-teal-700 border-teal-200' },
+                  { value: 'COMPLETED', label: 'Completed', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+                  { value: 'CANCELLED', label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200' },
+                ].map((status) => (
+                  <label
+                    key={status.value}
+                    className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                      newStatus === status.value
+                        ? `${status.color} border-2`
+                        : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="orderStatus"
+                      value={status.value}
+                      checked={newStatus === status.value}
+                      onChange={(e) => setNewStatus(e.target.value)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className={`ml-3 text-sm font-medium px-2 py-0.5 rounded-full ${status.color}`}>
+                      {status.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
 
               <div className="flex gap-3 mt-6">
                 <button
@@ -440,6 +559,141 @@ const AllOrders = () => {
                   Update Status
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Document Modal */}
+      {showPrintModal && printOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full transform transition-all duration-300 scale-100">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">
+                  Print Document
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Review print settings before printing
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPrintModal(false)}
+                className="p-2 hover:bg-white/50 rounded-xl transition-colors duration-200"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4 bg-violet-50/30 border-b border-violet-100">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-xs font-medium text-gray-500 uppercase">Order ID</span>
+                  <p className="text-sm font-semibold text-violet-700">{printOrder.orderNumber}</p>
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-gray-500 uppercase">Customer</span>
+                  <p className="text-sm font-medium text-gray-900">{printOrder.customer?.name || "Student"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Printer size={16} className="text-violet-600" />
+                Print Configuration
+              </h4>
+              
+              <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Document</span>
+                  <span className="text-sm font-medium text-gray-900 max-w-[250px] truncate">
+                    {printOrder.file?.name || printOrder.fileName || "Document.pdf"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Pages</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {printOrder.file?.pages || printOrder.pages || 1}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Print Type</span>
+                  <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
+                    printOrder.printConfig?.color || printOrder.color 
+                      ? "bg-violet-100 text-violet-700" 
+                      : "bg-gray-200 text-gray-700"
+                  }`}>
+                    {printOrder.printConfig?.color || printOrder.color ? "Color" : "Black & White"}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Copies</span>
+                  <span className="text-sm font-semibold text-violet-700 bg-violet-50 px-3 py-1 rounded-full">
+                    {printOrder.printConfig?.copies || printOrder.copies || 1}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-sm text-gray-600">Sides</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {printOrder.printConfig?.sides === "double" || printOrder.doubleSided 
+                      ? "Double-Sided" 
+                      : "Single-Sided"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Document Preview Section */}
+              <div className="mt-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <Eye size={16} className="text-violet-600" />
+                  Document Preview
+                </h4>
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                  {/* Document preview with file icon card */}
+                  <div className="p-4 bg-gradient-to-br from-violet-50 to-purple-50">
+                    <div className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm border border-violet-100">
+                      <div className="w-12 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-md">
+                        <span className="text-white text-xs font-bold">PDF</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">
+                          {printOrder.file?.name || printOrder.fileName || "Document.pdf"}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {printOrder.file?.pages || printOrder.pages || 1} page(s) • Ready to print
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-emerald-500" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <p className="text-xs text-amber-800 flex items-center gap-2">
+                  <AlertCircle size={14} />
+                  <span>Remember to set your printer to match the configuration above</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-gray-50 rounded-b-2xl flex justify-end gap-3">
+              <button
+                onClick={() => setShowPrintModal(false)}
+                className="px-4 py-2.5 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-100 transition-all duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executePrint}
+                className="px-6 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-medium hover:from-violet-700 hover:to-purple-700 transition-all duration-200 shadow-sm hover:shadow-md flex items-center gap-2"
+              >
+                <Printer size={16} />
+                Print Document
+              </button>
             </div>
           </div>
         </div>

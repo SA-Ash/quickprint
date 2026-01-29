@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   FileText,
   CheckCircle,
@@ -13,7 +14,7 @@ import { useOrders } from "../hooks/useOrders.jsx";
 
 const Notifications = () => {
   const [showFullView, setShowFullView] = useState(false);
-  const { notifications, markNotificationRead, markAllNotificationsRead, getUnreadCount } = useOrders();
+  const { notifications, markNotificationRead, markAllNotificationsRead, clearAllNotifications, getUnreadCount } = useOrders();
 
   const unreadCount = getUnreadCount();
 
@@ -25,8 +26,8 @@ const Notifications = () => {
     markAllNotificationsRead();
   };
 
-  const clearAllNotifications = () => {
-
+  const handleClearAll = async () => {
+    await clearAllNotifications();
     setShowFullView(false);
   };
 
@@ -81,7 +82,7 @@ const Notifications = () => {
             )}
             {notifications.length > 0 && (
               <button
-                onClick={clearAllNotifications}
+                onClick={handleClearAll}
                 className="text-xs text-gray-500 hover:text-red-600 font-medium px-1.5 sm:px-2 py-1 hover:bg-gray-100 rounded"
               >
                 Clear all
@@ -157,8 +158,8 @@ const Notifications = () => {
         )}
       </div>
 
-      {showFullView && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+      {showFullView && createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[100] flex items-center justify-center p-2 sm:p-4">
           <div className="bg-white rounded-xl w-full max-w-2xl sm:max-w-3xl md:max-w-4xl h-full max-h-screen overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
               <div className="flex items-center">
@@ -194,7 +195,7 @@ const Notifications = () => {
                   </button>
                 )}
                 <button
-                  onClick={clearAllNotifications}
+                  onClick={handleClearAll}
                   className="px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Clear all
@@ -262,7 +263,8 @@ const Notifications = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -93,6 +93,7 @@ export const paymentService = {
 
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
+      include: { order: { select: { userId: true } } },
     });
 
     if (!payment) {
@@ -120,6 +121,7 @@ export const paymentService = {
 
         await paymentPublisher.publishPaymentSuccess({
           orderId: payment.orderId,
+          userId: payment.order.userId,
           amount: parseFloat(updatedPayment.amount.toString()) * 100,
           paymentId: updatedPayment.id,
         });
@@ -133,6 +135,7 @@ export const paymentService = {
 
         await paymentPublisher.publishPaymentFailed({
           orderId: payment.orderId,
+          userId: payment.order.userId,
           reason: txnStatus.message || 'Payment failed',
         });
 
@@ -176,6 +179,7 @@ export const paymentService = {
 
     const payment = await prisma.payment.findFirst({
       where: { providerOrderId: orderId },
+      include: { order: { select: { userId: true } } },
     });
 
     if (!payment) {
@@ -200,6 +204,7 @@ export const paymentService = {
 
       await paymentPublisher.publishPaymentSuccess({
         orderId: payment.orderId,
+        userId: payment.order.userId,
         amount: parseFloat(payment.amount.toString()) * 100,
         paymentId: payment.id,
       });
@@ -215,6 +220,7 @@ export const paymentService = {
 
       await paymentPublisher.publishPaymentFailed({
         orderId: payment.orderId,
+        userId: payment.order.userId,
         reason: callbackData.RESPMSG || 'Payment failed',
       });
 

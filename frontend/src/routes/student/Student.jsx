@@ -7,6 +7,7 @@ import Cart from "../../Components/Cart";
 import { useAuth } from "../../hooks/useAuth.jsx";
 import { useOrders } from "../../hooks/useOrders.jsx";
 import { showSuccess, showError } from "../../utils/errorHandler.js";
+import { uploadService } from "../../services/upload.service.js";
 
 const Student = () => {
   const navigate = useNavigate();
@@ -74,7 +75,19 @@ const Student = () => {
     try {
       setIsPlacingOrder(true);
 
-      const fileUrl = `https://example.com/uploads/${uploadedFile.name}`;
+      // Upload the file to the server first
+      // Note: uploadedFile is {name, size, type, file} wrapper, need to pass .file
+      let fileUrl;
+      let fileId;
+      try {
+        const uploadResult = await uploadService.uploadFile(uploadedFile.file);
+        fileUrl = uploadResult.url;
+        fileId = uploadResult.fileId;
+      } catch (uploadError) {
+        console.error("File upload failed:", uploadError);
+        showError("Failed to upload file. Please try again.");
+        return;
+      }
 
       const orderData = {
         shopId: selectedShop.id,
@@ -82,6 +95,7 @@ const Student = () => {
           url: fileUrl,
           name: uploadedFile.name,
           pages: currentPrintConfig?.pages || 1,
+          fileId: fileId, // Database file ID for tracking
         },
         printConfig: {
           pages: 'all',

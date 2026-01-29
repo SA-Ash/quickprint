@@ -44,17 +44,20 @@ export interface OrderCompletedPayload {
 
 export interface OrderCancelledPayload {
   orderId: string;
+  userId: string;
   reason?: string;
 }
 
 export interface PaymentSuccessPayload {
   orderId: string;
+  userId: string;
   amount: number;
   paymentId: string;
 }
 
 export interface PaymentFailedPayload {
   orderId: string;
+  userId: string;
   reason: string;
 }
 

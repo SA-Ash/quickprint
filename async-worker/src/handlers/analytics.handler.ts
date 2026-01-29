@@ -1,37 +1,39 @@
 /**
- * Analytics Handler
+ * Analytics Handler - Consumes from RabbitMQ analytics queue
  */
 
 import { analyticsService } from '../services/analytics.service.js';
-import { eventBus, EVENT_TYPES } from '../events/index.js';
-import type { OrderCreatedPayload, OrderCompletedPayload, OrderCancelledPayload, PaymentSuccessPayload, PaymentFailedPayload, ShopRegisteredPayload } from '../events/index.js';
+import { consumeFromQueue, QUEUES } from '../infrastructure/rabbitmq.client.js';
 
+interface AnalyticsMessage {
+  eventType: string;
+  payload: Record<string, unknown>;
+  timestamp: string;
+}
+
+async function handleAnalyticsMessage(message: AnalyticsMessage): Promise<void> {
+  const { eventType, payload } = message;
+  console.log(`[AnalyticsHandler] Processing: ${eventType}`);
+
+  // Map event types to analytics service calls
+  if (eventType.startsWith('ORDER_')) {
+    await analyticsService.logOrderEvent(eventType.toLowerCase().replace('_', '.'), payload);
+  } else if (eventType.startsWith('PAYMENT_')) {
+    await analyticsService.logPaymentEvent(eventType.toLowerCase().replace('_', '.'), payload);
+  } else if (eventType.startsWith('SHOP_')) {
+    await analyticsService.logShopEvent(eventType.toLowerCase().replace('_', '.'), payload);
+  } else {
+    console.warn(`[AnalyticsHandler] Unknown event type: ${eventType}`);
+  }
+}
+
+export async function startAnalyticsConsumer(): Promise<void> {
+  console.log('[AnalyticsHandler] Starting consumer...');
+  await consumeFromQueue<AnalyticsMessage>(QUEUES.ANALYTICS, handleAnalyticsMessage);
+  console.log('[AnalyticsHandler] Consumer started');
+}
+
+// Keep old export for backwards compatibility
 export function registerAnalyticsHandlers(): void {
-  console.log('[AnalyticsHandler] Registering...');
-
-  eventBus.subscribe<OrderCreatedPayload>(EVENT_TYPES.ORDER_CREATED, async (event) => {
-    await analyticsService.logOrderEvent('order.created', event.payload);
-  });
-
-  eventBus.subscribe<OrderCompletedPayload>(EVENT_TYPES.ORDER_COMPLETED, async (event) => {
-    await analyticsService.logOrderEvent('order.completed', event.payload);
-  });
-
-  eventBus.subscribe<OrderCancelledPayload>(EVENT_TYPES.ORDER_CANCELLED, async (event) => {
-    await analyticsService.logOrderEvent('order.cancelled', event.payload);
-  });
-
-  eventBus.subscribe<PaymentSuccessPayload>(EVENT_TYPES.PAYMENT_SUCCESS, async (event) => {
-    await analyticsService.logPaymentEvent('payment.success', event.payload);
-  });
-
-  eventBus.subscribe<PaymentFailedPayload>(EVENT_TYPES.PAYMENT_FAILED, async (event) => {
-    await analyticsService.logPaymentEvent('payment.failed', event.payload);
-  });
-
-  eventBus.subscribe<ShopRegisteredPayload>(EVENT_TYPES.SHOP_REGISTERED, async (event) => {
-    await analyticsService.logShopEvent('shop.registered', event.payload);
-  });
-
-  console.log('[AnalyticsHandler] Registered');
+  console.warn('[AnalyticsHandler] registerAnalyticsHandlers is deprecated, use startAnalyticsConsumer instead');
 }

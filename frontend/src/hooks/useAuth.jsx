@@ -1,5 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 import { authService } from '../services/auth.service';
+import { wsService } from '../services/websocket.service';
 
 const AuthContext = createContext();
 
@@ -11,13 +12,28 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Function to get fresh token for WebSocket reconnect
+  const getToken = () => {
+    return localStorage.getItem('accessToken');
+  };
+
   useEffect(() => {
     // Check for existing session on mount
     const currentUser = authService.getCurrentUser();
     if (currentUser && authService.isAuthenticated()) {
       setUser(currentUser);
+      // Connect WebSocket with existing session
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        wsService.connect(token, getToken);
+      }
     }
     setLoading(false);
+
+    // Cleanup on unmount
+    return () => {
+      wsService.disconnect();
+    };
   }, []);
 
   const login = async (loginData) => {
@@ -38,6 +54,9 @@ export const AuthProvider = ({ children }) => {
           const code = loginData.otp || loginData.code;
           const response = await authService.verifyPhoneOTP(loginData.phone, code, loginData.college);
           setUser(response.user);
+          // Connect WebSocket after successful login
+          const token = localStorage.getItem('accessToken');
+          if (token) wsService.connect(token, getToken);
           return { success: true, user: response.user };
         }
       } else if (loginData.type === 'phone_password') {
@@ -55,6 +74,8 @@ export const AuthProvider = ({ children }) => {
           // Default to login
           const response = await authService.phonePasswordLogin(loginData.phone, loginData.password);
           setUser(response.user);
+          const token = localStorage.getItem('accessToken');
+          if (token) wsService.connect(token, getToken);
           return { success: true, user: response.user };
         }
       } else if (loginData.type === 'email_password') {
@@ -72,6 +93,8 @@ export const AuthProvider = ({ children }) => {
           // Default to login
           const response = await authService.emailPasswordLogin(loginData.email, loginData.password);
           setUser(response.user);
+          const token = localStorage.getItem('accessToken');
+          if (token) wsService.connect(token, getToken);
           return { success: true, user: response.user };
         }
       } else if (loginData.type === 'google') {
@@ -105,6 +128,8 @@ export const AuthProvider = ({ children }) => {
           // Default: login with email/password
           const response = await authService.partnerLogin(loginData.email, loginData.password);
           setUser(response.user);
+          const token = localStorage.getItem('accessToken');
+          if (token) wsService.connect(token, getToken);
           return { success: true, user: response.user };
         }
       }
@@ -158,6 +183,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Disconnect WebSocket first
+      wsService.disconnect();
+      
       if (!USE_MOCK) {
         await authService.logout();
       } else {
@@ -169,6 +197,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       console.error('Logout error:', err);
       // Still clear user state even if API call fails
+      wsService.disconnect();
       setUser(null);
     }
   };

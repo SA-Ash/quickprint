@@ -155,7 +155,7 @@ export const orderService = {
         await orderPublisher.publishOrderCompleted({ orderId, totalCost: parseFloat(order.totalCost.toString()) });
         break;
       case 'CANCELLED':
-        await orderPublisher.publishOrderCancelled({ orderId, reason: 'Cancelled by shop' });
+        await orderPublisher.publishOrderCancelled({ orderId, userId: order.userId, reason: 'Cancelled by shop' });
         break;
     }
 
@@ -228,7 +228,8 @@ export const orderService = {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          user: { select: { id: true, name: true, phone: true } },
+          user: { select: { id: true, name: true, phone: true, college: true } },
+          payment: { select: { id: true, status: true, createdAt: true } },
         },
       }),
       prisma.order.count({ where }),

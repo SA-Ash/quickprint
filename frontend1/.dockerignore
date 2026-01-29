@@ -1,0 +1,35 @@
+# Dependencies
+node_modules
+
+# Build outputs (we build inside Docker)
+dist
+
+# Environment files (use build args instead)
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+
+# Logs
+*.log
+logs
+
+# Testing
+coverage
+.nyc_output
+
+# Documentation
+*.md
+!README.md
+
+# Misc
+.DS_Store
+Thumbs.db
+.vercel

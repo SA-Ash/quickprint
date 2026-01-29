@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import multipart from '@fastify/multipart';
 import { env } from './config/env.js';
 import { API_PREFIX } from './config/constants.js';
 
@@ -12,6 +13,10 @@ import { shopRoutes } from './modules/shop/index.js';
 import { paymentRoutes } from './modules/payment/index.js';
 import { analyticsRoutes } from './modules/analytics/index.js';
 import { reviewRoutes } from './modules/review/index.js';
+import { notificationRoutes } from './modules/notification/index.js';
+import { uploadRoutes } from './modules/upload/upload.routes.js';
+import { fileRoutes } from './modules/file/file.routes.js';
+import { initializeStorage } from './infrastructure/storage/s3.client.js';
 
 import { authMiddleware } from './common/middleware/index.js';
 
@@ -45,6 +50,22 @@ export async function buildApp() {
     max: 100,
     timeWindow: '1 minute',
   });
+
+  // Register multipart at app level for file uploads
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB max
+    },
+  });
+
+  // Initialize S3/MinIO storage
+  await initializeStorage();
+
+  // File upload routes
+  await fastify.register(uploadRoutes);
+  
+  // File management routes (download, status callbacks)
+  await fastify.register(fileRoutes);
 
   fastify.get('/health', async () => {
     return { status: 'ok', timestamp: new Date().toISOString() };
@@ -103,6 +124,9 @@ export async function buildApp() {
   );
 
   await fastify.register(reviewRoutes, { prefix: `${API_PREFIX}/reviews` });
+
+  // Notification routes (protected)
+  await fastify.register(notificationRoutes, { prefix: `${API_PREFIX}/notifications` });
 
   return fastify;
 }

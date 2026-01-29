@@ -131,7 +131,7 @@ services:
     container_name: quickprint-postgres
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-quickprint}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB:-quickprint}
     volumes:
@@ -163,9 +163,12 @@ services:
     image: rabbitmq:3.12-management-alpine
     container_name: quickprint-rabbitmq
     restart: unless-stopped
+    ports:
+      - "5672:5672" # AMQP port for local development
+      - "15672:15672" # Management UI
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-admin}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -182,6 +185,34 @@ services:
       - "traefik.http.routers.rabbitmq.tls.certresolver=letsencrypt"
       - "traefik.http.services.rabbitmq.loadbalancer.server.port=15672"
 
+  # MinIO S3-compatible object storage
+  minio:
+    image: minio/minio:latest
+    container_name: quickprint-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Management Console
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - quickprint
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.minio.rule=Host(`files.quickprint.com`)"
+      - "traefik.http.routers.minio.entrypoints=websecure"
+      - "traefik.http.routers.minio.tls.certresolver=letsencrypt"
+      - "traefik.http.services.minio.loadbalancer.server.port=9000"
+
 networks:
   quickprint:
     driver: bridge
@@ -190,3 +221,4 @@ volumes:
   postgres_data:
   redis_data:
   rabbitmq_data:
+  minio_data:

@@ -1,5 +1,6 @@
 import React, { useState, useRef } from "react";
 import { Upload, FileText, X, Cloud, CheckCircle } from "lucide-react";
+import toast from "react-hot-toast";
 
 const UploadSection = ({ onFileUpload, uploadedFile: externalFile }) => {
   const [isDragging, setIsDragging] = useState(false);
@@ -37,12 +38,13 @@ const UploadSection = ({ onFileUpload, uploadedFile: externalFile }) => {
         setUploadedFile(fileData);
         if (onFileUpload) {
           onFileUpload(fileData);
+          toast.success("File uploaded successfully!");
         }
       } else {
-        alert("File size exceeds 50MB limit");
+        toast.error("File size exceeds 50MB limit");
       }
     } else {
-      alert("Please upload PDF or image files only");
+      toast.error("Please upload PDF or image files only");
     }
   };
 
@@ -75,10 +77,9 @@ const UploadSection = ({ onFileUpload, uploadedFile: externalFile }) => {
 
       <div
         className={`border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 min-h-[250px] transition-colors duration-300 ease-in-out
-          ${
-            isDragging
-              ? "border-blue-500 bg-blue-50/80"
-              : uploadedFile
+          ${isDragging
+            ? "border-blue-500 bg-blue-50/80"
+            : uploadedFile
               ? "border-green-400 bg-green-50/80"
               : "border-slate-300 hover:border-blue-400 hover:bg-slate-50/50"
           }`}
@@ -132,9 +133,8 @@ const UploadSection = ({ onFileUpload, uploadedFile: externalFile }) => {
             onClick={handleClickUpload}
           >
             <div
-              className={`p-4 rounded-full transition-colors ${
-                isDragging ? "bg-blue-100" : "bg-slate-100"
-              }`}
+              className={`p-4 rounded-full transition-colors ${isDragging ? "bg-blue-100" : "bg-slate-100"
+                }`}
             >
               {isDragging ? (
                 <Cloud className="w-8 h-8 md:w-10 md:h-10 text-blue-500" />

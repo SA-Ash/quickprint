@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,198 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  phone         String         @unique
+  email         String?        @unique
+  passwordHash  String?
+  name          String?
+  role          UserRole       @default(STUDENT)
+  college       String?
+  authMethod    AuthMethod     @default(PHONE_OTP)
+  otpEnabled    Boolean        @default(true)
+  otpMethod     String         @default("sms")
+  backupCodes   String[]       @default([])
+  googleId      String?        @unique
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  orders        Order[]
+  reviews       Review[]
+  shop          Shop?
+  shopPhotos    ShopPhoto[]    @relation("ShopPhotoUploader")
+  notifications Notification[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([googleId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  orderId   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, read])
+}
+
+model Shop {
+  id             String      @id @default(cuid())
+  ownerId        String      @unique
+  businessName   String
+  address        Json
+  location       Json
+  services       Json
+  pricing        Json
+  rating         Float       @default(0)
+  reviewCount    Int         @default(0)
+  totalRatingSum Int         @default(0)
+  description    String?
+  operatingHours Json?
+  isActive       Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  orders         Order[]
+  reviews        Review[]
+  owner          User        @relation(fields: [ownerId], references: [id])
+  photos         ShopPhoto[]
+
+  @@index([isActive])
+  @@index([rating])
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  shopId    String
+  rating    Int
+  comment   String?
+  photos    String[] @default([])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, shopId])
+  @@index([shopId])
+  @@index([userId])
+}
+
+model ShopPhoto {
+  id        String   @id @default(cuid())
+  userId    String
+  shopId    String
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  user      User     @relation("ShopPhotoUploader", fields: [userId], references: [id])
+
+  @@index([shopId])
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  userId        String
+  shopId        String
+  file          Json
+  printConfig   Json
+  status        OrderStatus @default(PENDING)
+  paymentMethod String      @default("cod")
+  paymentStatus String      @default("pending")
+  totalCost     Decimal     @db.Decimal(10, 2)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  shop          Shop        @relation(fields: [shopId], references: [id])
+  user          User        @relation(fields: [userId], references: [id])
+  payment       Payment?
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([status])
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String        @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  status          PaymentStatus @default(PENDING)
+  provider        String
+  providerOrderId String?
+  providerPayId   String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  order           Order         @relation(fields: [orderId], references: [id])
+
+  @@index([status])
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  phone     String
+  otp       String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone, otp])
+  @@index([expiresAt])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model PendingPartnerRegistration {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  phone         String   @unique
+  passwordHash  String
+  name          String
+  shopName      String
+  address       Json
+  location      Json?
+  phoneVerified Boolean  @default(false)
+  emailVerified Boolean  @default(false)
+  emailToken    String?  @unique
+  expiresAt     DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([email])
+  @@index([phone])
+  @@index([emailToken])
+  @@index([expiresAt])
+}
+
+model EmailVerification {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  type      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
 }
 
 enum UserRole {
@@ -39,184 +228,27 @@ enum AuthMethod {
   EMAIL_PASSWORD
 }
 
-model User {
+enum FileStatus {
+  UPLOADED
+  SENT_TO_PARTNER
+  PRINTING
+  PRINTED
+  FAILED
+}
+
+model File {
   id           String     @id @default(cuid())
-  phone        String     @unique
-  email        String?    @unique
-  passwordHash String?
-  name         String?
-  role         UserRole   @default(STUDENT)
-  college      String?
-  authMethod   AuthMethod @default(PHONE_OTP)
-  otpEnabled   Boolean    @default(true)
-  otpMethod    String     @default("sms")
-  backupCodes  String[]   @default([])
-  googleId     String?    @unique
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-
-  orders     Order[]
-  shop       Shop?
-  reviews    Review[]
-  shopPhotos ShopPhoto[] @relation("ShopPhotoUploader")
-
-  @@index([phone])
-  @@index([email])
-  @@index([googleId])
-}
-
-model Shop {
-  id             String   @id @default(cuid())
-  ownerId        String   @unique
-  owner          User     @relation(fields: [ownerId], references: [id])
-  businessName   String
-  address        Json
-  location       Json
-  services       Json
-  pricing        Json
-  rating         Float    @default(0)
-  reviewCount    Int      @default(0)
-  totalRatingSum Int      @default(0)
-  description    String?
-  operatingHours Json?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  orders  Order[]
-  reviews Review[]
-  photos  ShopPhoto[]
-
-  @@index([isActive])
-  @@index([rating])
-}
-
-model Review {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  shopId    String
-  shop      Shop     @relation(fields: [shopId], references: [id])
-  rating    Int
-  comment   String?
-  photos    String[] @default([])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, shopId])
-  @@index([shopId])
-  @@index([userId])
-}
-
-model ShopPhoto {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation("ShopPhotoUploader", fields: [userId], references: [id])
-  shopId    String
-  shop      Shop     @relation(fields: [shopId], references: [id])
-  url       String
-  caption   String?
-  createdAt DateTime @default(now())
-
-  @@index([shopId])
-}
-
-model Order {
-  id            String        @id @default(cuid())
-  orderNumber   String        @unique
-  userId        String
-  user          User          @relation(fields: [userId], references: [id])
-  shopId        String
-  shop          Shop          @relation(fields: [shopId], references: [id])
-  file          Json // { url, name, pages }
-  printConfig   Json // { pages, color, copies, binding, sides }
-  status        OrderStatus   @default(PENDING)
-  paymentMethod String        @default("cod") // cod, upi, paytm, online
-  paymentStatus String        @default("pending") // pending, completed, failed
-  totalCost     Decimal       @db.Decimal(10, 2)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-
-  payment Payment?
-
-  @@index([userId])
-  @@index([shopId])
+  originalName String
+  storedKey    String     @unique  // S3 object key
+  mimeType     String
+  size         Int
+  checksum     String     // SHA-256 hash for integrity
+  status       FileStatus @default(UPLOADED)
+  orderId      String?    @unique
+  uploadedAt   DateTime   @default(now())
+  downloadedAt DateTime?
+  printedAt    DateTime?
+  
   @@index([status])
+  @@index([checksum])
 }
-
-model Payment {
-  id              String        @id @default(cuid())
-  orderId         String        @unique
-  order           Order         @relation(fields: [orderId], references: [id])
-  amount          Decimal       @db.Decimal(10, 2)
-  status          PaymentStatus @default(PENDING)
-  provider        String // razorpay, cashfree
-  providerOrderId String?
-  providerPayId   String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@index([status])
-}
-
-model OtpVerification {
-  id        String   @id @default(cuid())
-  phone     String
-  otp       String
-  expiresAt DateTime
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([phone, otp])
-  @@index([expiresAt])
-}
-
-model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([token])
-  @@index([expiresAt])
-}
-
-// Stores pending partner registrations during 2FA verification
-model PendingPartnerRegistration {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  phone        String   @unique
-  passwordHash String
-  name         String
-  shopName     String
-  address      Json
-  location     Json?
-  phoneVerified Boolean @default(false)
-  emailVerified Boolean @default(false)
-  emailToken   String?  @unique
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
-
-  @@index([email])
-  @@index([phone])
-  @@index([emailToken])
-  @@index([expiresAt])
-}
-
-// Stores email verification tokens (magic links)
-model EmailVerification {
-  id        String   @id @default(cuid())
-  email     String
-  token     String   @unique
-  type      String   // 'partner_register', 'user_register', 'password_reset'
-  expiresAt DateTime
-  verified  Boolean  @default(false)
-  createdAt DateTime @default(now())
-
-  @@index([email])
-  @@index([token])
-  @@index([expiresAt])
-}
-
