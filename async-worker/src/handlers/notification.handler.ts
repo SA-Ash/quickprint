@@ -1,9 +1,11 @@
 /**
  * Notification Handler - Consumes from RabbitMQ notifications queue
+ * Sends SMS and Email notifications for order events
  */
 
 import { prisma } from '../infrastructure/database/prisma.client.js';
 import { smsService } from '../services/sms.service.js';
+import { emailService } from '../services/email.service.js';
 import { pushService } from '../services/push.service.js';
 import { consumeFromQueue, QUEUES } from '../infrastructure/rabbitmq.client.js';
 
@@ -15,6 +17,7 @@ const EVENT_TYPES = {
   ORDER_CANCELLED: 'ORDER_CANCELLED',
   PAYMENT_SUCCESS: 'PAYMENT_SUCCESS',
   PAYMENT_FAILED: 'PAYMENT_FAILED',
+  USER_WELCOME: 'USER_WELCOME',
 } as const;
 
 interface NotificationMessage {
@@ -26,6 +29,9 @@ interface NotificationMessage {
     shopId?: string;
     amount?: number;
     reason?: string;
+    userName?: string;
+    userEmail?: string;
+    isPartner?: boolean;
   };
   timestamp: string;
 }
@@ -36,12 +42,32 @@ async function handleNotificationMessage(message: NotificationMessage): Promise<
 
   switch (eventType) {
     case EVENT_TYPES.ORDER_CREATED: {
+      // Notify shop owner of new order
       const shop = await prisma.shop.findUnique({
         where: { id: payload.shopId },
-        include: { owner: { select: { phone: true } } },
+        include: { owner: { select: { phone: true, email: true } } },
       });
-      if (shop?.owner?.phone) {
-        await smsService.sendOrderCreated(shop.owner.phone, payload.orderNumber || 'Unknown');
+      
+      const order = payload.orderId ? await prisma.order.findUnique({
+        where: { id: payload.orderId },
+        select: { totalCost: true, user: { select: { name: true } } },
+      }) : null;
+
+      if (shop?.owner) {
+        // SMS notification
+        if (shop.owner.phone) {
+          await smsService.sendOrderCreated(shop.owner.phone, payload.orderNumber || 'Unknown');
+        }
+        
+        // Email notification
+        if (shop.owner.email) {
+          await emailService.sendOrderCreated(shop.owner.email, {
+            orderNumber: payload.orderNumber || 'Unknown',
+            customerName: order?.user?.name || undefined,
+            totalCost: order?.totalCost ? Number(order.totalCost) : 0,
+          });
+        }
+        
         await pushService.sendNewOrderToShop(shop.ownerId, payload.orderNumber || 'Unknown');
       }
       break;
@@ -51,12 +77,26 @@ async function handleNotificationMessage(message: NotificationMessage): Promise<
       const order = await prisma.order.findUnique({
         where: { id: payload.orderId },
         include: {
-          user: { select: { phone: true } },
+          user: { select: { phone: true, email: true } },
           shop: { select: { businessName: true } },
         },
       });
-      if (order?.user?.phone) {
-        await smsService.sendOrderConfirmed(order.user.phone, order.orderNumber, order.shop.businessName);
+      
+      if (order?.user) {
+        // SMS notification
+        if (order.user.phone) {
+          await smsService.sendOrderConfirmed(order.user.phone, order.orderNumber, order.shop.businessName);
+        }
+        
+        // Email notification
+        if (order.user.email) {
+          await emailService.sendOrderConfirmed(order.user.email, {
+            orderNumber: order.orderNumber,
+            shopName: order.shop.businessName,
+            totalCost: Number(order.totalCost),
+          });
+        }
+        
         await pushService.sendOrderNotification(payload.userId || '', 'confirmed', order.orderNumber);
       }
       break;
@@ -66,12 +106,27 @@ async function handleNotificationMessage(message: NotificationMessage): Promise<
       const order = await prisma.order.findUnique({
         where: { id: payload.orderId },
         include: {
-          user: { select: { phone: true } },
-          shop: { select: { businessName: true } },
+          user: { select: { phone: true, email: true } },
+          shop: { select: { businessName: true, address: true } },
         },
       });
-      if (order?.user?.phone) {
-        await smsService.sendOrderReady(order.user.phone, order.orderNumber, order.shop.businessName);
+      
+      if (order?.user) {
+        // SMS notification
+        if (order.user.phone) {
+          await smsService.sendOrderReady(order.user.phone, order.orderNumber, order.shop.businessName);
+        }
+        
+        // Email notification
+        if (order.user.email) {
+          const shopAddress = order.shop.address as { street?: string; city?: string } | null;
+          await emailService.sendOrderReady(order.user.email, {
+            orderNumber: order.orderNumber,
+            shopName: order.shop.businessName,
+            shopAddress: shopAddress ? `${shopAddress.street || ''}, ${shopAddress.city || ''}` : undefined,
+          });
+        }
+        
         await pushService.sendOrderNotification(payload.userId || '', 'ready', order.orderNumber);
       }
       break;
@@ -80,10 +135,23 @@ async function handleNotificationMessage(message: NotificationMessage): Promise<
     case EVENT_TYPES.ORDER_CANCELLED: {
       const order = await prisma.order.findUnique({
         where: { id: payload.orderId },
-        include: { user: { select: { phone: true, id: true } } },
+        include: { user: { select: { phone: true, email: true, id: true } } },
       });
-      if (order?.user?.phone) {
-        await smsService.sendOrderCancelled(order.user.phone, order.orderNumber, payload.reason);
+      
+      if (order?.user) {
+        // SMS notification
+        if (order.user.phone) {
+          await smsService.sendOrderCancelled(order.user.phone, order.orderNumber, payload.reason);
+        }
+        
+        // Email notification
+        if (order.user.email) {
+          await emailService.sendOrderCancelled(order.user.email, {
+            orderNumber: order.orderNumber,
+            reason: payload.reason,
+          });
+        }
+        
         await pushService.sendOrderNotification(order.user.id, 'cancelled', order.orderNumber);
       }
       break;
@@ -92,17 +160,48 @@ async function handleNotificationMessage(message: NotificationMessage): Promise<
     case EVENT_TYPES.PAYMENT_SUCCESS: {
       const order = await prisma.order.findUnique({
         where: { id: payload.orderId },
-        include: { user: { select: { phone: true } } },
+        include: { 
+          user: { select: { phone: true, email: true } },
+          payment: { select: { providerPayId: true, createdAt: true } },
+        },
       });
-      if (order?.user?.phone && payload.amount) {
-        await smsService.sendPaymentConfirmation(order.user.phone, payload.amount / 100, order.orderNumber);
+      
+      if (order?.user) {
+        const amount = (payload.amount || 0) / 100; // Convert paise to rupees
+        
+        // SMS notification
+        if (order.user.phone) {
+          await smsService.sendPaymentConfirmation(order.user.phone, amount, order.orderNumber);
+        }
+        
+        // Email notification with receipt
+        if (order.user.email && order.payment) {
+          await emailService.sendPaymentReceipt(order.user.email, {
+            orderNumber: order.orderNumber,
+            amount: amount,
+            paymentId: order.payment.providerPayId || 'N/A',
+            date: order.payment.createdAt,
+          });
+        }
       }
       break;
     }
 
     case EVENT_TYPES.PAYMENT_FAILED: {
       console.log(`[NotificationHandler] Payment failed for order ${payload.orderId}: ${payload.reason}`);
-      // Could send SMS about failed payment if needed
+      // Could send notification about failed payment if needed
+      break;
+    }
+
+    case EVENT_TYPES.USER_WELCOME: {
+      // Send welcome email for new signups
+      if (payload.userEmail && payload.userName) {
+        await emailService.sendWelcome(
+          payload.userEmail, 
+          payload.userName, 
+          payload.isPartner || false
+        );
+      }
       break;
     }
 

@@ -10,12 +10,14 @@ import {
   Mail,
   MapPin,
   Lock,
+  Fingerprint,
 } from "lucide-react";
 import AddressAutoFill from "../Components/AddressAutoFill";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
 import COLLEGES from "../constants/colleges.js";
+import { passkeyService } from "../services/passkey.service.js";
 
 const Signup = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -42,6 +44,7 @@ const Signup = () => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [signupSuccess, setSignupSuccess] = useState(false);
+  const [passkeySupported] = useState(() => passkeyService.isSupported());
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -425,6 +428,24 @@ const Signup = () => {
               </p>
             </div>
           </form>
+
+          {/* Passkey Signup Option */}
+          {passkeySupported && !isPartner && (
+            <div className="mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">or</span>
+                </div>
+              </div>
+
+              <p className="text-center text-sm text-gray-600 mt-4">
+                Create your account first, then add a passkey in settings for faster login.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="w-full md:w-1/2 bg-gradient-to-br from-blue-700 to-cyan-600 text-white p-6 md:p-8 lg:p-12 flex flex-col justify-center relative overflow-hidden order-1 md:order-2">

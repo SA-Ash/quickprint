@@ -47,6 +47,10 @@ const envSchema = z.object({
   RP_ID: z.string().default('localhost'),
   RP_NAME: z.string().default('QuickPrint'),
   RP_ORIGIN: z.string().default('http://localhost:5173'),
+
+  // SendGrid Email
+  SENDGRID_API_KEY: z.string().optional(),
+  SENDGRID_FROM_EMAIL: z.string().default('noreply@thequickprint.in'),
 });
 
 const parsed = envSchema.safeParse(process.env);

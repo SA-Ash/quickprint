@@ -21,7 +21,16 @@ import type {
 } from '@simplewebauthn/types';
 import { prisma } from '../../infrastructure/database/prisma.client.js';
 import { env } from '../../config/env.js';
-import { redisClient } from '../../infrastructure/cache/redis.client.js';
+import { getRedisClient } from '../../infrastructure/cache/redis.client.js';
+
+// Helper to get Redis client with null safety
+function getRedis() {
+  const client = getRedisClient();
+  if (!client) {
+    throw new Error('Redis is not connected');
+  }
+  return client;
+}
 import jwt from 'jsonwebtoken';
 
 // Relying Party configuration
@@ -87,7 +96,7 @@ export const passkeyService = {
     });
 
     // Store challenge in Redis for verification
-    await redisClient.setex(
+    await getRedis().setex(
       `passkey:challenge:${userId}`,
       CHALLENGE_TTL,
       options.challenge
@@ -104,7 +113,7 @@ export const passkeyService = {
     response: RegistrationResponseJSON
   ): Promise<{ success: boolean; credentialId: string }> {
     // Get stored challenge
-    const expectedChallenge = await redisClient.get(`passkey:challenge:${userId}`);
+    const expectedChallenge = await getRedis().get(`passkey:challenge:${userId}`);
     if (!expectedChallenge) {
       throw new Error('Registration challenge expired. Please try again.');
     }
@@ -153,7 +162,7 @@ export const passkeyService = {
     }
 
     // Clean up challenge
-    await redisClient.del(`passkey:challenge:${userId}`);
+    await getRedis().del(`passkey:challenge:${userId}`);
 
     console.log(`[Passkey] Registered new credential for user: ${userId}`);
 
@@ -199,7 +208,7 @@ export const passkeyService = {
       ? `passkey:auth:${userId}` 
       : `passkey:auth:discoverable:${options.challenge}`;
     
-    await redisClient.setex(challengeKey, CHALLENGE_TTL, options.challenge);
+    await getRedis().setex(challengeKey, CHALLENGE_TTL, options.challenge);
 
     return { ...options, userId };
   },
@@ -243,12 +252,12 @@ export const passkeyService = {
     let expectedChallenge: string | null = null;
     
     if (userId) {
-      expectedChallenge = await redisClient.get(`passkey:auth:${userId}`);
+      expectedChallenge = await getRedis().get(`passkey:auth:${userId}`);
     } else {
       // Try to find by scanning (not ideal, but works for discoverable)
-      const keys = await redisClient.keys('passkey:auth:discoverable:*');
+      const keys = await getRedis().keys('passkey:auth:discoverable:*');
       for (const key of keys) {
-        const challenge = await redisClient.get(key);
+        const challenge = await getRedis().get(key);
         if (challenge) {
           expectedChallenge = challenge;
           break;
@@ -294,7 +303,7 @@ export const passkeyService = {
 
     // Clean up challenge
     if (userId) {
-      await redisClient.del(`passkey:auth:${userId}`);
+      await getRedis().del(`passkey:auth:${userId}`);
     }
 
     // Generate tokens

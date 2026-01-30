@@ -24,6 +24,7 @@
     "@fastify/swagger-ui": "^2.1.0",
     "@fastify/websocket": "^11.2.0",
     "@prisma/client": "^5.22.0",
+    "@sendgrid/mail": "^8.1.6",
     "@simplewebauthn/server": "^13.2.2",
     "amqplib": "^0.10.9",
     "argon2": "^0.44.0",
