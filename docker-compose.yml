@@ -47,6 +47,11 @@ services:
       - S3_BUCKET=${S3_BUCKET}
       - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
       - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@thequickprint.in}
+      - RP_NAME=QuickPrint
+      - RP_ID=thequickprint.in
+      - RP_ORIGIN=https://thequickprint.in
       - FRONTEND_URL=https://thequickprint.in
     depends_on:
       postgres:
@@ -140,7 +145,7 @@ services:
     image: redis:7-alpine
     container_name: quickprint-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-}
+    command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
     networks:
