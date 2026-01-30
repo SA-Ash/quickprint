@@ -26,9 +26,6 @@ export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/phone/initiate', otpRateLimit, authController.initiatePhoneOTP);
   fastify.post('/phone/verify', strictRateLimit, authController.verifyPhoneOTP);
   fastify.post('/phone/signup', strictRateLimit, authController.signupPhoneOTP);
-  
-  // Firebase Phone Auth - verify Firebase ID token
-  fastify.post('/phone/verify-token', strictRateLimit, authController.verifyFirebasePhone);
 
   fastify.post('/email/initiate', otpRateLimit, authController.initiateEmailOTP);
   fastify.post('/email/verify', strictRateLimit, authController.verifyEmailOTP);
