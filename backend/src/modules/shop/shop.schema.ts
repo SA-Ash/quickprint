@@ -67,14 +67,26 @@ export interface ShopPricing {
   lamination?: number;
 }
 
+export interface ServiceArea {
+  id?: string;
+  name: string;
+  address?: string;
+  placeId?: string;
+  active?: boolean;
+}
+
 export interface ShopResponse {
   id: string;
   ownerId: string;
   businessName: string;
+  name?: string; // Alias for businessName (frontend compatibility)
+  phone?: string | null;
+  email?: string | null;
   address: ShopAddress;
   location: ShopLocation;
   services: ShopServices;
   pricing: ShopPricing;
+  serviceAreas?: ServiceArea[];
   rating: number;
   reviewCount: number;
   description: string | null;
