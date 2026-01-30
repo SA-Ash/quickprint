@@ -43,11 +43,11 @@ const CHALLENGE_TTL = 300;
 
 function generateTokens(userId: string) {
   const accessToken = jwt.sign({ userId }, env.JWT_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRY,
-  });
+    expiresIn: env.JWT_ACCESS_EXPIRY as string,
+  } as jwt.SignOptions);
   const refreshToken = jwt.sign({ userId, type: 'refresh' }, env.JWT_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRY,
-  });
+    expiresIn: env.JWT_REFRESH_EXPIRY as string,
+  } as jwt.SignOptions);
   return { accessToken, refreshToken };
 }
 
@@ -73,10 +73,9 @@ export const passkeyService = {
       throw new Error('User not found');
     }
 
-    // Get existing credentials to exclude
+    // Get existing credentials to exclude (convert Buffer to base64url string for WebAuthn)
     const excludeCredentials = user.passkeys.map((passkey) => ({
-      id: passkey.credentialId,
-      type: 'public-key' as const,
+      id: Buffer.from(passkey.credentialId).toString('base64url'),
       transports: passkey.transports as AuthenticatorTransportFuture[],
     }));
 
@@ -175,7 +174,7 @@ export const passkeyService = {
   async generateAuthenticationOptions(
     phone?: string
   ): Promise<PublicKeyCredentialRequestOptionsJSON & { userId?: string }> {
-    let allowCredentials: { id: Uint8Array; type: 'public-key'; transports?: AuthenticatorTransportFuture[] }[] = [];
+    let allowCredentials: { id: string; transports?: AuthenticatorTransportFuture[] }[] = [];
     let userId: string | undefined;
 
     if (phone) {
@@ -191,8 +190,7 @@ export const passkeyService = {
 
       userId = user.id;
       allowCredentials = user.passkeys.map((passkey) => ({
-        id: new Uint8Array(passkey.credentialId),
-        type: 'public-key' as const,
+        id: Buffer.from(passkey.credentialId).toString('base64url'),
         transports: passkey.transports as AuthenticatorTransportFuture[],
       }));
     }
@@ -277,7 +275,7 @@ export const passkeyService = {
         expectedOrigin: origin,
         expectedRPID: rpID,
         credential: {
-          id: new Uint8Array(passkey.credentialId),
+          id: Buffer.from(passkey.credentialId).toString('base64url'),
           publicKey: new Uint8Array(passkey.publicKey),
           counter: passkey.counter,
           transports: passkey.transports as AuthenticatorTransportFuture[],

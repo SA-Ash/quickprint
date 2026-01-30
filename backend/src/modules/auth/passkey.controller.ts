@@ -5,7 +5,7 @@
 
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { passkeyService } from './passkey.service.js';
-import type { AuthenticatedRequest } from '../../common/middleware/auth.middleware.js';
+import type { AuthenticatedRequest } from '../../common/types/request.types.js';
 import type { RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/types';
 
 export const passkeyController = {
@@ -16,7 +16,7 @@ export const passkeyController = {
   async getRegistrationOptions(request: FastifyRequest, reply: FastifyReply) {
     try {
       const authRequest = request as AuthenticatedRequest;
-      const userId = authRequest.user.userId;
+      const userId = authRequest.user.id;
 
       const options = await passkeyService.generateRegistrationOptions(userId);
       return reply.code(200).send(options);
@@ -35,7 +35,7 @@ export const passkeyController = {
   async verifyRegistration(request: FastifyRequest, reply: FastifyReply) {
     try {
       const authRequest = request as AuthenticatedRequest;
-      const userId = authRequest.user.userId;
+      const userId = authRequest.user.id;
       const response = request.body as RegistrationResponseJSON;
 
       const result = await passkeyService.verifyRegistration(userId, response);
@@ -94,7 +94,7 @@ export const passkeyController = {
   async listPasskeys(request: FastifyRequest, reply: FastifyReply) {
     try {
       const authRequest = request as AuthenticatedRequest;
-      const userId = authRequest.user.userId;
+      const userId = authRequest.user.id;
 
       const passkeys = await passkeyService.listPasskeys(userId);
       return reply.code(200).send({ passkeys });
@@ -111,7 +111,7 @@ export const passkeyController = {
   async deletePasskey(request: FastifyRequest, reply: FastifyReply) {
     try {
       const authRequest = request as AuthenticatedRequest;
-      const userId = authRequest.user.userId;
+      const userId = authRequest.user.id;
       const { id } = request.params as { id: string };
 
       const result = await passkeyService.deletePasskey(userId, id);
