@@ -272,11 +272,26 @@ export const PartnerOrdersProvider = ({ children }) => {
         const unsubNewOrder = wsService.subscribe(WS_EVENTS.ORDER_CREATED, handleNewOrder);
         const unsubStatusChange = wsService.subscribe(WS_EVENTS.ORDER_STATUS_CHANGED, handleStatusChange);
 
+        // Polling fallback: refresh orders every 30 seconds
+        // This ensures orders are up-to-date even if WebSocket connection fails
+        const pollingInterval = setInterval(() => {
+          console.log('[Polling] Refreshing orders...');
+          loadOrders();
+        }, 30000); // 30 seconds
+
         // Cleanup on unmount
         return () => {
           unsubNewOrder();
           unsubStatusChange();
+          clearInterval(pollingInterval);
         };
+      } else {
+        // Mock mode: still use polling for demo purposes
+        const pollingInterval = setInterval(() => {
+          loadOrders();
+        }, 30000);
+        
+        return () => clearInterval(pollingInterval);
       }
     } else {
       setOrders([]);

@@ -16,6 +16,7 @@ export async function shopRoutes(fastify: FastifyInstance) {
     protectedInstance.get('/me', shopController.getMyShop);
     protectedInstance.put('/:id', shopController.updateShop);
     protectedInstance.put('/:id/pricing', shopController.updatePricing);
+    protectedInstance.put('/:id/service-areas', shopController.updateServiceAreas);
     protectedInstance.patch('/:id/status', shopController.toggleActive);
     protectedInstance.post('/:id/photos', shopController.uploadPhoto);
   });

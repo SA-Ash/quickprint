@@ -64,6 +64,15 @@ export const shopService = {
     async toggleActive(shopId, isActive) {
         return apiClient.patch(`/shops/${shopId}/status`, { isActive });
     },
+
+    /**
+     * Update service areas for a shop
+     * @param {string} shopId - Shop ID
+     * @param {Array} serviceAreas - Array of service area objects
+     */
+    async updateServiceAreas(shopId, serviceAreas) {
+        return apiClient.put(`/shops/${shopId}/service-areas`, { serviceAreas });
+    },
 };
 
 export default shopService;

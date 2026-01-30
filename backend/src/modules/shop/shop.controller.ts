@@ -237,4 +237,37 @@ export const shopController = {
       return reply.code(500).send({ error: 'Failed to get photos' });
     }
   },
+
+  async updateServiceAreas(
+    request: FastifyRequest<{ Params: { id: string } }>,
+    reply: FastifyReply
+  ) {
+    try {
+      if (!request.user) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+
+      const { id } = request.params;
+      const { serviceAreas } = request.body as { serviceAreas: Array<{
+        id?: string;
+        name: string;
+        address?: string;
+        placeId?: string;
+        active?: boolean;
+      }> };
+
+      const shop = await shopService.updateServiceAreas(id, request.user.id, serviceAreas);
+      return reply.code(200).send(shop);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'Shop not found') {
+          return reply.code(404).send({ error: error.message });
+        }
+        if (error.message.includes('Not authorized')) {
+          return reply.code(403).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Failed to update service areas' });
+    }
+  },
 };

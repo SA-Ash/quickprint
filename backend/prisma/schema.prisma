@@ -69,10 +69,13 @@ model Shop {
   id             String      @id @default(cuid())
   ownerId        String      @unique
   businessName   String
+  phone          String?
+  email          String?
   address        Json
   location       Json
   services       Json
   pricing        Json
+  serviceAreas   Json?       @default("[]")
   rating         Float       @default(0)
   reviewCount    Int         @default(0)
   totalRatingSum Int         @default(0)

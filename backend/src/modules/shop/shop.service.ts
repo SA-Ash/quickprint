@@ -34,10 +34,14 @@ function formatShopResponse(shop: any, distance?: number): ShopResponse {
     id: shop.id,
     ownerId: shop.ownerId,
     businessName: shop.businessName,
+    name: shop.businessName, // Alias for frontend compatibility
+    phone: shop.phone || null,
+    email: shop.email || null,
     address: shop.address as ShopAddress,
     location: shop.location as ShopLocation,
     services: shop.services as ShopServices,
     pricing: shop.pricing as ShopPricing,
+    serviceAreas: shop.serviceAreas || [],
     rating: shop.rating,
     reviewCount: shop.reviewCount || 0,
     description: shop.description || null,
@@ -301,5 +305,37 @@ export const shopService = {
       userName: p.user?.name || null,
       createdAt: p.createdAt,
     }));
+  },
+
+  async updateServiceAreas(
+    shopId: string,
+    ownerId: string,
+    serviceAreas: Array<{
+      id?: string;
+      name: string;
+      address?: string;
+      placeId?: string;
+      active?: boolean;
+    }>
+  ): Promise<ShopResponse> {
+    const existingShop = await prisma.shop.findUnique({ where: { id: shopId } });
+    if (!existingShop) {
+      throw new Error('Shop not found');
+    }
+    if (existingShop.ownerId !== ownerId) {
+      throw new Error('Not authorized to update this shop');
+    }
+
+    // Store service areas as JSON in the shop's services field or a dedicated field
+    // For now, we'll add it to a serviceAreas JSON field
+    const shop = await prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        // Store as JSON - Prisma will handle serialization
+        serviceAreas: serviceAreas as any,
+      },
+    });
+
+    return formatShopResponse(shop);
   },
 };
