@@ -51,6 +51,11 @@ const envSchema = z.object({
   // SendGrid Email
   SENDGRID_API_KEY: z.string().optional(),
   SENDGRID_FROM_EMAIL: z.string().default('noreply@thequickprint.in'),
+
+  // Firebase Admin SDK (for phone auth verification)
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

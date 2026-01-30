@@ -202,3 +202,37 @@ export const resendPartnerOtpSchema = z.object({
 
 export type ResendPartnerOtpInput = z.infer<typeof resendPartnerOtpSchema>;
 
+// Firebase Phone Auth - verify Firebase ID token
+export const firebasePhoneVerifySchema = z.object({
+  idToken: z.string().min(100, 'Firebase ID token is required'),
+  phoneNumber: z.string().min(10, 'Phone number is required'),
+  college: z.string().optional(),
+  isPartner: z.boolean().optional(),
+});
+
+export type FirebasePhoneVerifyInput = z.infer<typeof firebasePhoneVerifySchema>;
+
+// Signup with phone verification (Step 1 of 2FA)
+export const signupPhoneVerifySchema = z.object({
+  idToken: z.string().min(100, 'Firebase ID token is required'),
+  phoneNumber: z.string().min(10, 'Phone number is required'),
+  email: z.string().email('Valid email is required'),
+  name: z.string().min(1, 'Name is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters').optional(),
+  college: z.string().optional(),
+  isPartner: z.boolean().optional(),
+  // Partner fields
+  shopName: z.string().optional(),
+  address: z.object({
+    street: z.string().min(1),
+    city: z.string().min(1),
+    state: z.string().min(1),
+    pincode: z.string().min(6).max(6),
+  }).optional(),
+  location: z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180),
+  }).optional(),
+});
+
+export type SignupPhoneVerifyInput = z.infer<typeof signupPhoneVerifySchema>;
