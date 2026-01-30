@@ -9,7 +9,7 @@ import { passkeyService } from "../services/passkey.service.js";
 
 const Login = () => {
   const [isPartner, setIsPartner] = useState(false);
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [college, setCollege] = useState("");
   const [partnerId, setPartnerId] = useState("");
   const [password, setPassword] = useState("");
@@ -30,9 +30,9 @@ const Login = () => {
 
     try {
       if (!isPartner) {
-        // Student login with phone + password
-        if (!phone || phone.length !== 10) {
-          throw new Error('Please enter a valid 10-digit phone number');
+        // Student login with email + password
+        if (!email || !email.includes('@')) {
+          throw new Error('Please enter a valid email address');
         }
         if (!password) {
           throw new Error('Please enter your password');
@@ -42,8 +42,8 @@ const Login = () => {
         }
 
         await login({
-          type: "phone",
-          phone: `+91${phone}`,
+          type: "email",
+          email: email,
           password: password,
           college: college,
         });
@@ -197,7 +197,7 @@ const Login = () => {
               <button
                 onClick={() => {
                   setIsPartner(!isPartner);
-                  setPhone("");
+                  setEmail("");
                   setPartnerId("");
                   setPassword("");
                   setCollege("");
@@ -218,7 +218,7 @@ const Login = () => {
             <p className="text-gray-500 mb-6 text-sm md:text-base">
               {isPartner
                 ? "Access your partner dashboard"
-                : "Login with your phone number and password"}
+                : "Login with your email and password"}
             </p>
 
             <form className="space-y-4 md:space-y-6" onSubmit={handleSubmit}>
@@ -243,8 +243,8 @@ const Login = () => {
                       >
                         <option value="">Select your college</option>
                         {COLLEGES.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}
+                          <option key={c.value} value={c.value}>
+                            {c.label}
                           </option>
                         ))}
                       </select>
@@ -253,28 +253,21 @@ const Login = () => {
 
                   <div>
                     <label
-                      htmlFor="phone"
+                      htmlFor="email"
                       className="block text-sm font-semibold text-gray-700 mb-1"
                     >
-                      Phone Number
+                      Email Address
                     </label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-                      <div className="absolute left-10 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm md:text-base">
-                        +91
-                      </div>
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                       <input
-                        id="phone"
-                        type="tel"
-                        value={phone}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, "");
-                          if (value.length <= 10) setPhone(value);
-                        }}
-                        className="w-full pl-20 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm md:text-base"
-                        placeholder="9876543210"
+                        id="email"
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full pl-10 py-2 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm md:text-base"
+                        placeholder="Enter your email address"
                         required
-                        maxLength={10}
                       />
                     </div>
                   </div>

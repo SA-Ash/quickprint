@@ -18,7 +18,7 @@ export const workerEnv = {
   // SendGrid Email
   SENDGRID_API_KEY: process.env.SENDGRID_API_KEY || '',
   SENDGRID_FROM_EMAIL: process.env.SENDGRID_FROM_EMAIL || 'noreply@quickprint.com',
-  USE_MOCK_EMAIL: process.env.NODE_ENV === 'development',
+  USE_MOCK_EMAIL: !process.env.SENDGRID_API_KEY, // Only mock if no API key
   
   // Firebase FCM
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID || '',

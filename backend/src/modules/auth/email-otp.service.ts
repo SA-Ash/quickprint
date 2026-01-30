@@ -127,8 +127,8 @@ export const emailOtpService = {
     // Store OTP in Redis
     await getRedis().setex(`email:otp:${email}`, OTP_TTL, code);
 
-    // Send email
-    if (env.USE_MOCK_OTP || !env.SENDGRID_API_KEY) {
+    // Send email (only mock if no SendGrid API key)
+    if (!env.SENDGRID_API_KEY) {
       console.log(`[Email OTP Mock] To: ${email} | Code: ${code}`);
     } else {
       try {
@@ -243,8 +243,8 @@ export const emailOtpService = {
 
     const url = `${env.FRONTEND_URL}/auth/magic-link?token=${token}`;
 
-    // Send email
-    if (env.USE_MOCK_OTP || !env.SENDGRID_API_KEY) {
+    // Send email (only mock if no SendGrid API key)
+    if (!env.SENDGRID_API_KEY) {
       console.log(`[Magic Link Mock] To: ${email} | URL: ${url}`);
     } else {
       try {

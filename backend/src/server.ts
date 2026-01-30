@@ -2,12 +2,14 @@ import { buildApp } from './app.js';
 import { env } from './config/env.js';
 import { connectDatabase, disconnectDatabase } from './infrastructure/database/prisma.client.js';
 import { connectRabbitMQ, disconnectRabbitMQ } from './infrastructure/queue/rabbitmq.client.js';
+import { connectRedis, disconnectRedis } from './infrastructure/cache/redis.client.js';
 import { wsGateway } from './websocket/index.js';
 
 async function main() {
   console.log('Starting QuickPrint Backend...');
 
   await connectDatabase();
+  await connectRedis();
   await connectRabbitMQ();
 
   const app = await buildApp();
@@ -33,6 +35,7 @@ async function main() {
       console.log(`\n${signal} received, shutting down...`);
       await app.close();
       await disconnectRabbitMQ();
+      await disconnectRedis();
       await disconnectDatabase();
       process.exit(0);
     });
