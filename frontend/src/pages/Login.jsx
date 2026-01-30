@@ -46,7 +46,7 @@ const Login = () => {
   // Check if passkey is available
   useEffect(() => {
     const checkPasskey = async () => {
-      const available = await passkeyService.isPasskeyAvailable();
+      const available = passkeyService.isSupported();
       setPasskeyAvailable(available);
     };
     checkPasskey();
