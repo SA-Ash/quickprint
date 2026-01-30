@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Phone, Building2, Eye, EyeOff, Check, Printer, Mail, Lock } from "lucide-react";
+import { Phone, Building2, Eye, EyeOff, Check, Printer, Mail, Lock, Fingerprint } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
 import LocationPermission from "../Components/LocationPermission.jsx";
 import COLLEGES from "../constants/colleges.js";
+import { passkeyService } from "../services/passkey.service.js";
 
 const Login = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -17,6 +18,8 @@ const Login = () => {
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [showLocationPermission, setShowLocationPermission] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeySupported] = useState(() => passkeyService.isSupported());
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -94,6 +97,30 @@ const Login = () => {
       navigate("/partner");
     } else {
       navigate("/student");
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!passkeySupported) {
+      showError("Passkeys are not supported on this device");
+      return;
+    }
+
+    setPasskeyLoading(true);
+    try {
+      const result = await passkeyService.login();
+      showSuccess("Login successful!");
+      setLoginSuccess(true);
+      setShowLocationPermission(true);
+    } catch (error) {
+      console.error("Passkey login error:", error);
+      if (error.name === "NotAllowedError") {
+        showError("Passkey authentication was cancelled");
+      } else {
+        showError(error.message || "Passkey login failed");
+      }
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -398,6 +425,58 @@ const Login = () => {
                 </p>
               </div>
             </form>
+
+              {/* Passkey Login Option */}
+              {passkeySupported && (
+                <div className="mt-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white text-gray-500">or</span>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePasskeyLogin}
+                    disabled={passkeyLoading}
+                    className="mt-4 w-full flex justify-center items-center py-2 md:py-3 px-4 border-2 border-gray-200 rounded-lg text-gray-700 hover:bg-gray-50 hover:border-purple-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition text-sm md:text-base"
+                  >
+                    {passkeyLoading ? (
+                      <>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-purple-600"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        Authenticating...
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint className="h-5 w-5 mr-2 text-purple-600" />
+                        Sign in with Passkey
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
           </div>
         </div>
       </div>

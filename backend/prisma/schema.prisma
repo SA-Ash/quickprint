@@ -27,10 +27,27 @@ model User {
   shop          Shop?
   shopPhotos    ShopPhoto[]    @relation("ShopPhotoUploader")
   notifications Notification[]
+  passkeys      PasskeyCredential[]
 
   @@index([phone])
   @@index([email])
   @@index([googleId])
+}
+
+model PasskeyCredential {
+  id            String    @id @default(cuid())
+  credentialId  Bytes     @unique
+  userId        String
+  publicKey     Bytes
+  counter       Int       @default(0)
+  deviceType    String?
+  backedUp      Boolean   @default(false)
+  transports    String[]  @default([])
+  createdAt     DateTime  @default(now())
+  lastUsedAt    DateTime?
+  user          User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
 
 model Notification {
@@ -226,6 +243,7 @@ enum AuthMethod {
   EMAIL_OTP
   PHONE_PASSWORD
   EMAIL_PASSWORD
+  PASSKEY
 }
 
 enum FileStatus {

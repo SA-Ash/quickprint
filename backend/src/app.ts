@@ -7,6 +7,7 @@ import { env } from './config/env.js';
 import { API_PREFIX } from './config/constants.js';
 
 import { authRoutes } from './modules/auth/index.js';
+import { passkeyRoutes } from './modules/auth/passkey.routes.js';
 import { userRoutes } from './modules/user/index.js';
 import { orderRoutes } from './modules/order/index.js';
 import { shopRoutes } from './modules/shop/index.js';
@@ -75,6 +76,9 @@ export async function buildApp() {
 
   // Auth routes (public)
   await fastify.register(authRoutes, { prefix: `${API_PREFIX}/auth` });
+
+  // Passkey routes (mixed public/protected)
+  await fastify.register(passkeyRoutes, { prefix: `${API_PREFIX}/auth/passkey` });
 
   // Shop routes (mixed public/protected - handles auth internally)
   await fastify.register(shopRoutes, { prefix: `${API_PREFIX}/shops` });

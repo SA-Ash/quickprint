@@ -42,6 +42,11 @@ const envSchema = z.object({
 
   // Frontend URL (for magic links)
   FRONTEND_URL: z.string().default('http://localhost:5173'),
+
+  // WebAuthn (Passkey) Relying Party config
+  RP_ID: z.string().default('localhost'),
+  RP_NAME: z.string().default('QuickPrint'),
+  RP_ORIGIN: z.string().default('http://localhost:5173'),
 });
 
 const parsed = envSchema.safeParse(process.env);
