@@ -106,7 +106,7 @@ const AllOrders = () => {
       // If we have a fileId, fetch the signed URL from the backend
       if (fileId) {
         const token = localStorage.getItem('accessToken');
-        const response = await fetch(`http://localhost:3000/api/files/${fileId}/download`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/files/${fileId}/download`, {
           headers: {
             'Authorization': token ? `Bearer ${token}` : '',
           },

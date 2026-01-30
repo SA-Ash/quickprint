@@ -13,7 +13,7 @@ export function registerEmailHandlers(): void {
   eventBus.subscribe<OrderConfirmedPayload>(EVENT_TYPES.ORDER_CONFIRMED, async (event) => {
     const order = await prisma.order.findUnique({ where: { id: event.payload.orderId }, include: { user: { select: { email: true } }, shop: { select: { businessName: true } } } });
     if (order?.user?.email) {
-      await emailService.sendOrderConfirmation(order.user.email, { orderNumber: order.orderNumber, shopName: order.shop.businessName, totalCost: Number(order.totalCost) });
+      await emailService.sendOrderConfirmed(order.user.email, { orderNumber: order.orderNumber, shopName: order.shop.businessName, totalCost: Number(order.totalCost) });
     }
   });
 
