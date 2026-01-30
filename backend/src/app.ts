@@ -51,8 +51,26 @@ export async function buildApp() {
   });
 
   await fastify.register(rateLimit, {
-    max: 100,
+    global: true,
+    max: 500, // 500 requests per minute per IP (increased for production)
     timeWindow: '1 minute',
+    // Exclude health checks from rate limiting
+    allowList: (req) => {
+      return req.url === '/health' || req.url === '/api/v1/health';
+    },
+    // Custom key generator - use X-Forwarded-For for proxied requests
+    keyGenerator: (req) => {
+      return req.headers['x-forwarded-for']?.toString()?.split(',')[0]?.trim() 
+        || req.headers['x-real-ip']?.toString() 
+        || req.ip;
+    },
+    // Custom error handler for rate limiting
+    errorResponseBuilder: (req, context) => ({
+      statusCode: 429,
+      error: 'Too Many Requests',
+      message: `Rate limit exceeded. You can make ${context.max} requests per ${context.after}. Try again in ${context.after}`,
+      retryAfter: context.after,
+    }),
   });
 
   // Register multipart at app level for file uploads
