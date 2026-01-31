@@ -146,6 +146,8 @@ services:
     container_name: quickprint-redis
     restart: unless-stopped
     command: redis-server --appendonly yes
+    ports:
+      - "6379:6379" # Expose for local development
     volumes:
       - redis_data:/data
     networks:

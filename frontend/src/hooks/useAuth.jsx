@@ -185,14 +185,16 @@ export const AuthProvider = ({ children }) => {
       
       if (!USE_MOCK) {
         await authService.logout();
+      } else {
+        localStorage.removeItem('user');
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
       }
+      setUser(null);
     } catch (err) {
       console.error('Logout error:', err);
-    } finally {
-      // Always clear tokens and user state
-      localStorage.removeItem('user');
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      // Still clear user state even if API call fails
+      wsService.disconnect();
       setUser(null);
     }
   };

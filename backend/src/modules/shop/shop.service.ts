@@ -63,6 +63,11 @@ export const shopService = {
     });
 
     const scoredShops = shops
+      .filter((shop) => {
+        // Skip shops without valid location data
+        const loc = shop.location as unknown as ShopLocation | null;
+        return loc && typeof loc.lat === 'number' && typeof loc.lng === 'number';
+      })
       .map((shop) => {
         const shopLocation = shop.location as unknown as ShopLocation;
         const distance = calculateDistance(lat, lng, shopLocation.lat, shopLocation.lng);

@@ -141,10 +141,12 @@ export const PartnerOrdersProvider = ({ children }) => {
 
       const updatedNotifications = [notification, ...notifications];
       setNotifications(updatedNotifications);
-      localStorage.setItem(
-        `partner_notifications_${user.email || user.id}`, 
-        JSON.stringify(updatedNotifications)
-      );
+      if (USE_MOCK) {
+        localStorage.setItem(
+          `partner_notifications_${user.email || user.id}`, 
+          JSON.stringify(updatedNotifications)
+        );
+      }
     } catch (err) {
       console.error("Failed to update order status:", err);
       setError(err.message);
@@ -200,10 +202,12 @@ export const PartnerOrdersProvider = ({ children }) => {
       notif.id === notificationId ? { ...notif, read: true } : notif
     );
     setNotifications(updatedNotifications);
-    localStorage.setItem(
-      `partner_notifications_${user.email || user.id}`,
-      JSON.stringify(updatedNotifications)
-    );
+    if (USE_MOCK) {
+      localStorage.setItem(
+        `partner_notifications_${user.email || user.id}`,
+        JSON.stringify(updatedNotifications)
+      );
+    }
   };
 
   const markAllNotificationsRead = () => {
@@ -212,10 +216,12 @@ export const PartnerOrdersProvider = ({ children }) => {
       read: true,
     }));
     setNotifications(updatedNotifications);
-    localStorage.setItem(
-      `partner_notifications_${user.email || user.id}`,
-      JSON.stringify(updatedNotifications)
-    );
+    if (USE_MOCK) {
+      localStorage.setItem(
+        `partner_notifications_${user.email || user.id}`,
+        JSON.stringify(updatedNotifications)
+      );
+    }
   };
 
   const getUnreadCount = () => {

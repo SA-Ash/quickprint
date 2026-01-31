@@ -258,7 +258,9 @@ export const OrdersProvider = ({ children }) => {
     });
 
     setOrders(updatedOrders);
-    localStorage.setItem(`orders_${user.id}`, JSON.stringify(updatedOrders));
+    if (USE_MOCK) {
+      localStorage.setItem(`orders_${user.id}`, JSON.stringify(updatedOrders));
+    }
 
     addNotification({
       id: `notif_${Date.now()}`,
@@ -275,7 +277,8 @@ export const OrdersProvider = ({ children }) => {
     const updatedNotifications = [notification, ...notifications];
     setNotifications(updatedNotifications);
 
-    if (user) {
+    // Only persist to localStorage in mock mode
+    if (USE_MOCK && user) {
       localStorage.setItem(
         `notifications_${user.id}`,
         JSON.stringify(updatedNotifications)

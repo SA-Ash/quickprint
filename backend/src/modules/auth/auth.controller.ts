@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import { authService } from './auth.service.js';
+import { verifyFirebaseToken, isFirebaseConfigured } from '../../infrastructure/auth/firebase-admin.js';
 import {
   phoneInitiateSchema,
   phoneVerifySchema,
@@ -20,6 +21,7 @@ import {
   partnerVerifyOtpSchema,
   partnerVerifyEmailSchema,
   resendPartnerOtpSchema,
+  firebasePhoneVerifySchema,
 } from './auth.schema.js';
 
 export const authController = {
@@ -412,6 +414,56 @@ export const authController = {
         }
       }
       return reply.code(500).send({ error: 'Failed to resend OTP' });
+    }
+  },
+
+  // ============================================
+  // FIREBASE PHONE AUTH ENDPOINTS
+  // ============================================
+
+  /**
+   * Verify Firebase phone ID token and login/create user
+   * Used for phone-based login after Firebase OTP verification
+   */
+  async verifyFirebasePhone(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      // Check if Firebase is configured
+      if (!isFirebaseConfigured()) {
+        return reply.code(503).send({ 
+          error: 'Firebase Phone Auth is not configured on this server' 
+        });
+      }
+
+      const input = firebasePhoneVerifySchema.parse(request.body);
+
+      // Verify the Firebase ID token
+      const decodedToken = await verifyFirebaseToken(input.idToken);
+
+      // Ensure phone number matches
+      if (decodedToken.phone_number !== input.phoneNumber) {
+        return reply.code(401).send({ error: 'Phone number mismatch' });
+      }
+
+      // Login or create user with phone
+      const result = await authService.loginOrCreateWithPhone({
+        phone: input.phoneNumber,
+        firebaseUid: decodedToken.uid,
+        college: input.college,
+        isPartner: input.isPartner,
+      });
+
+      return reply.code(200).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message.includes('Invalid') || error.message.includes('expired')) {
+          return reply.code(401).send({ error: error.message });
+        }
+      }
+      console.error('[Auth] Firebase phone verify error:', error);
+      return reply.code(500).send({ error: 'Phone verification failed' });
     }
   },
 };
