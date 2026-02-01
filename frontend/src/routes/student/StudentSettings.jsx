@@ -14,11 +14,13 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  Clock,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuth } from "../../hooks/useAuth.jsx";
 import { userService } from "../../services/user.service.js";
 import { authService } from "../../services/auth.service.js";
+import { orderService } from "../../services/order.service.js";
 import COLLEGES from "../../constants/colleges.js";
 import { showSuccess, showError } from "../../utils/errorHandler.js";
 
@@ -57,6 +59,17 @@ const StudentSettings = () => {
   const [isOtpLoading, setIsOtpLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showSupportDrawer, setShowSupportDrawer] = useState(false);
+
+  // Account statistics state
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    totalSpent: 0,
+    completed: 0,
+    pending: 0,
+    memberSince: null,
+  });
+
 
   // Load user data on mount
   useEffect(() => {
@@ -94,6 +107,34 @@ const StudentSettings = () => {
 
       // Then load full profile from API
       loadProfile();
+    }
+  }, [user]);
+
+  // Load order statistics
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const orders = await orderService.getUserOrders();
+        const totalSpent = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+        const completed = orders.filter(o => o.status === "COMPLETED").length;
+        const pending = orders.filter(o => 
+          ["PENDING", "ACCEPTED", "PRINTING", "READY"].includes(o.status)
+        ).length;
+        
+        setStats({
+          totalOrders: orders.length,
+          totalSpent,
+          completed,
+          pending,
+          memberSince: user?.createdAt ? new Date(user.createdAt) : null,
+        });
+      } catch (error) {
+        console.error("Failed to load order stats:", error);
+      }
+    };
+
+    if (user) {
+      loadStats();
     }
   }, [user]);
 
@@ -346,9 +387,7 @@ const StudentSettings = () => {
               </h3>
               <div className="space-y-2 md:space-y-3">
                 <button
-                  onClick={() =>
-                    toast("Contact support for assistance")
-                  }
+                  onClick={() => setShowSupportDrawer(true)}
                   className="w-full text-left py-2 px-4 rounded-lg flex items-center text-blue-600 hover:bg-blue-50 transition text-sm md:text-base"
                 >
                   <HelpCircle className="w-4 h-4 md:w-5 md:h-5 mr-2" />
@@ -459,26 +498,30 @@ const StudentSettings = () => {
 
               <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
                 <div className="bg-blue-50 text-center py-3 md:py-4 rounded-lg border border-blue-100">
-                  <p className="text-xl md:text-2xl font-bold text-blue-600">12</p>
+                  <p className="text-xl md:text-2xl font-bold text-blue-600">{stats.totalOrders}</p>
                   <p className="text-xs md:text-sm text-gray-600">Total Orders</p>
                 </div>
                 <div className="bg-green-50 text-center py-3 md:py-4 rounded-lg border border-green-100">
-                  <p className="text-xl md:text-2xl font-bold text-green-600">₹450</p>
+                  <p className="text-xl md:text-2xl font-bold text-green-600">₹{stats.totalSpent}</p>
                   <p className="text-xs md:text-sm text-gray-600">Total Spent</p>
                 </div>
                 <div className="bg-purple-50 text-center py-3 md:py-4 rounded-lg border border-purple-100">
-                  <p className="text-xl md:text-2xl font-bold text-purple-600">8</p>
+                  <p className="text-xl md:text-2xl font-bold text-purple-600">{stats.completed}</p>
                   <p className="text-xs md:text-sm text-gray-600">Completed</p>
                 </div>
                 <div className="bg-yellow-50 text-center py-3 md:py-4 rounded-lg border border-yellow-100">
-                  <p className="text-xl md:text-2xl font-bold text-yellow-600">4</p>
+                  <p className="text-xl md:text-2xl font-bold text-yellow-600">{stats.pending}</p>
                   <p className="text-xs md:text-sm text-gray-600">Pending</p>
                 </div>
               </div>
 
               <div className="bg-gray-50 rounded-lg p-3 md:p-4">
                 <p className="text-xs md:text-sm text-gray-600 text-center">
-                  <span className="font-medium">Member since January 2023</span>
+                  <span className="font-medium">
+                    {stats.memberSince 
+                      ? `Member since ${stats.memberSince.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+                      : 'Member'}
+                  </span>
                 </p>
               </div>
             </div>
@@ -683,6 +726,79 @@ const StudentSettings = () => {
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+    </div>
+
+      {/* Support Drawer */}
+      {showSupportDrawer && (
+        <div className="fixed inset-0 z-50">
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={() => setShowSupportDrawer(false)}
+          />
+          <div className="absolute right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl transform transition-transform duration-300">
+            <div className="p-6 h-full flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">Contact Support</h2>
+                <button
+                  onClick={() => setShowSupportDrawer(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              <div className="space-y-6 flex-1">
+                <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                  <div className="flex items-center mb-2">
+                    <Mail className="w-5 h-5 text-blue-600 mr-3" />
+                    <span className="text-sm font-semibold text-gray-700">Email</span>
+                  </div>
+                  <a 
+                    href="mailto:thequickprint2617@gmail.com"
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    thequickprint2617@gmail.com
+                  </a>
+                </div>
+
+                <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                  <div className="flex items-center mb-2">
+                    <Phone className="w-5 h-5 text-green-600 mr-3" />
+                    <span className="text-sm font-semibold text-gray-700">Phone</span>
+                  </div>
+                  <a 
+                    href="tel:+919390244436"
+                    className="text-green-600 font-medium hover:underline"
+                  >
+                    +91 93902 44436
+                  </a>
+                </div>
+
+                <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                  <div className="flex items-center mb-2">
+                    <Clock className="w-5 h-5 text-purple-600 mr-3" />
+                    <span className="text-sm font-semibold text-gray-700">Hours</span>
+                  </div>
+                  <p className="text-purple-700 font-medium">9:00 AM - 9:00 PM IST</p>
+                  <p className="text-sm text-gray-500 mt-1">Monday to Saturday</p>
+                </div>
+
+                <div className="text-center text-sm text-gray-500 mt-4">
+                  <p>We usually respond within 24 hours.</p>
+                  <p className="mt-2">For urgent queries, please call us.</p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSupportDrawer(false)}
+                className="w-full mt-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

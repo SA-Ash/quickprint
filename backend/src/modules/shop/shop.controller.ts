@@ -15,10 +15,11 @@ export const shopController = {
       const shops = await shopService.getNearbyShops(input);
       return reply.code(200).send({ shops });
     } catch (error) {
+      console.error('[Shop Controller] getNearbyShops error:', error);
       if (error instanceof Error && error.name === 'ZodError') {
         return reply.code(400).send({ error: 'Validation failed', details: error });
       }
-      return reply.code(500).send({ error: 'Failed to get nearby shops' });
+      return reply.code(200).send({ shops: [] }); // Return empty array instead of 500
     }
   },
 

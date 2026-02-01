@@ -115,11 +115,32 @@ const Signup = () => {
     
     setDetectingLocation(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
+        const { latitude, longitude } = position.coords;
         setShopLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+          lat: latitude,
+          lng: longitude,
         });
+        
+        // Reverse geocode to get address details
+        try {
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+          );
+          const data = await response.json();
+          
+          if (data && data.address) {
+            const addr = data.address;
+            // Auto-populate address fields
+            setStreet(addr.road || addr.neighbourhood || addr.suburb || "");
+            setCity(addr.city || addr.town || addr.village || addr.county || "");
+            setState(addr.state || "");
+            setPincode(addr.postcode || "");
+          }
+        } catch (err) {
+          console.error("Failed to reverse geocode:", err);
+        }
+        
         setDetectingLocation(false);
         showSuccess("Location detected!");
       },
@@ -129,6 +150,7 @@ const Signup = () => {
       }
     );
   };
+
 
   // Step 1: Validate form and send phone OTP
   const handleSendPhoneOTP = async (e) => {

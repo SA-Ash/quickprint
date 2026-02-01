@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   User,
   ChevronDown,
@@ -19,33 +19,62 @@ import {
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import Notifications from "./Notifications";
+import { orderService } from "../services/order.service";
 
 const Navbar = ({ userType = "partner" }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [orderCount, setOrderCount] = useState(0);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Fetch real-time order count
+  useEffect(() => {
+    const fetchOrderCount = async () => {
+      try {
+        if (userType === "student") {
+          const orders = await orderService.getUserOrders();
+          // Count active orders (not completed or cancelled)
+          const activeOrders = orders.filter(o => 
+            !["COMPLETED", "CANCELLED"].includes(o.status)
+          );
+          setOrderCount(activeOrders.length);
+        } else if (userType === "partner") {
+          const orders = await orderService.getShopOrders();
+          const activeOrders = orders.filter(o => 
+            !["COMPLETED", "CANCELLED"].includes(o.status)
+          );
+          setOrderCount(activeOrders.length);
+        }
+      } catch (error) {
+        console.error("Failed to fetch order count:", error);
+      }
+    };
+
+    fetchOrderCount();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchOrderCount, 30000);
+    return () => clearInterval(interval);
+  }, [userType]);
 
   const menuItems = {
     partner: [
       { id: "dashboard", label: "Dashboard", path: "/partner", icon: BarChart3, end: true },
-      { id: "orders", label: "Orders", path: "/partner/orders", icon: ShoppingCart, count: 0 },
+      { id: "orders", label: "Orders", path: "/partner/orders", icon: ShoppingCart, count: orderCount },
       { id: "reports", label: "Reports", path: "/partner/reports", icon: Printer },
       { id: "settings", label: "Settings", path: "/partner/settings", icon: Settings },
     ],
     student: [
       { id: "dashboard", label: "Upload & Print", path: "/student", icon: Printer, end: true },
-      { id: "orders", label: "My Orders", path: "/student/orders", icon: ShoppingCart, count: 2 },
+      { id: "orders", label: "My Orders", path: "/student/orders", icon: ShoppingCart, count: orderCount },
       { id: "settings", label: "Profile", path: "/student/settings", icon: User },
     ],
   };
 
-  // just connect length of orders in database it 'count' here in menuItems 
-
   const userData = {
-    partner: { name: user?.name || "Partner", sub: user?.email || "ashr@quickprint.com", contactIcon: Mail },
-    student: { name: user?.name || "Student", sub: user?.phone || "+91 9390244436", contactIcon: Phone },
+    partner: { name: user?.name || "Partner", sub: user?.email || "partner@quickprint.com", contactIcon: Mail },
+    student: { name: user?.name || "Student", sub: user?.phone || "+91 XXXXXXXXXX", contactIcon: Phone },
   };
 
   const currentMenuItems = menuItems[userType];
@@ -53,6 +82,7 @@ const Navbar = ({ userType = "partner" }) => {
   const ContactIcon = currentUserData.contactIcon;
 
   const totalNotifications = currentMenuItems.reduce((acc, item) => acc + (item.count || 0), 0);
+
 
   const handleSignOut = () => {
     navigate("/login");
