@@ -729,7 +729,6 @@ const StudentSettings = () => {
           </div>
         </div>
       )}
-    </div>
 
       {/* Support Drawer */}
       {showSupportDrawer && (
