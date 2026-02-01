@@ -102,7 +102,11 @@ export const AuthProvider = ({ children }) => {
       } else if (loginData.type === 'partner') {
         if (loginData.step === 'register') {
           // Legacy direct registration (without 2FA)
-          const response = await authService.partnerRegister(loginData);
+          // Extract only the fields the backend expects
+          const { email, password, name, phone, shopName, address, location } = loginData;
+          const response = await authService.partnerRegister({
+            email, password, name, phone, shopName, address, location
+          });
           setUser(response.user);
           return { success: true, user: response.user };
         } else if (loginData.step === 'initiate') {

@@ -129,11 +129,15 @@ const Navbar = ({ userType = "partner" }) => {
       <div className="flex items-center gap-2 sm:gap-4">
         <div className="relative">
           <button onClick={() => setIsNotificationsOpen(!isNotificationsOpen)} className="p-2 text-gray-600 hover:bg-blue-50 rounded-full relative transition-colors">
-            <Bell size={20} />
+            <Bell size={20} className={totalNotifications > 0 ? "animate-bounce" : ""} />
             {totalNotifications > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-3.5 w-3.5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-bold text-white">
-                {totalNotifications > 9 ? "9+" : totalNotifications}
-              </span>
+              <>
+                {/* Animated pulse ring */}
+                <span className="absolute top-1 right-1 h-4 w-4 animate-ping bg-red-400 rounded-full opacity-75"></span>
+                <span className="absolute top-1.5 right-1.5 h-3.5 w-3.5 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-bold text-white">
+                  {totalNotifications > 9 ? "9+" : totalNotifications}
+                </span>
+              </>
             )}
           </button>
           {isNotificationsOpen && <Notifications userType={userType} />}

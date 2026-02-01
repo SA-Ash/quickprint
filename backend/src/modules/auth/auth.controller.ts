@@ -126,6 +126,7 @@ export const authController = {
       const result = await authService.partnerRegister(input);
       return reply.code(201).send(result);
     } catch (error) {
+      console.error('[Partner Register] Error:', error);
       if (error instanceof Error) {
         if (error.name === 'ZodError') {
           return reply.code(400).send({ error: 'Validation failed', details: error });
@@ -133,6 +134,8 @@ export const authController = {
         if (error.message.includes('already registered')) {
           return reply.code(409).send({ error: error.message });
         }
+        // Return actual error message for debugging
+        return reply.code(500).send({ error: error.message || 'Registration failed' });
       }
       return reply.code(500).send({ error: 'Registration failed' });
     }

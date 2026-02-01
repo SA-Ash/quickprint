@@ -311,7 +311,8 @@ const AllOrders = () => {
                     filteredOrders.map((order) => (
                       <tr
                         key={order.id}
-                        className="hover:bg-blue-50/30 transition-all duration-200 group"
+                        onClick={() => navigate(`/partner/orders/${order.id}`)}
+                        className="hover:bg-blue-50/30 transition-all duration-200 group cursor-pointer"
                       >
                         <td className="px-6 py-4">
                           <div className="flex flex-col">

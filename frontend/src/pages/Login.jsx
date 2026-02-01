@@ -8,16 +8,15 @@ import {
   Printer,
   Mail,
   Lock,
-  Fingerprint,
   Loader2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { showError, showSuccess } from "../utils/errorHandler.js";
 import COLLEGES from "../constants/colleges.js";
-import { passkeyService } from "../services/passkey.service.js";
 import emailAuthService from "../services/email-auth.service.js";
 import phoneAuthService from "../services/phone-auth.service.js";
+
 
 const Login = () => {
   const [isPartner, setIsPartner] = useState(false);
@@ -40,9 +39,6 @@ const Login = () => {
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
-  
-  // Passkey
-  const [passkeySupported] = useState(() => passkeyService.isSupported());
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -169,23 +165,6 @@ const Login = () => {
     } catch (error) {
       console.error("Password login error:", error);
       showError(error.message || "Login failed. Please check your credentials.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle passkey login
-  const handlePasskeyLogin = async () => {
-    setIsLoading(true);
-    try {
-      const result = await passkeyService.login();
-      if (result?.user) {
-        showSuccess("Login successful!");
-        navigate(isPartner ? "/partner" : "/student");
-      }
-    } catch (error) {
-      console.error("Passkey login error:", error);
-      showError(error.message || "Passkey login failed");
     } finally {
       setIsLoading(false);
     }
@@ -322,16 +301,16 @@ const Login = () => {
                   )}
                 </button>
 
-                {/* Passkey Login */}
-                {passkeySupported && (
+                {/* Password Login - only for email users */}
+                {inputType === "email" && (
                   <button
                     type="button"
-                    onClick={handlePasskeyLogin}
-                    disabled={isLoading}
+                    onClick={() => setStep('password')}
+                    disabled={isLoading || !identifier}
                     className="w-full py-3 border-2 border-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition flex items-center justify-center"
                   >
-                    <Fingerprint className="h-5 w-5 mr-2" />
-                    Login with Passkey
+                    <Lock className="h-5 w-5 mr-2" />
+                    Login with Password
                   </button>
                 )}
               </form>

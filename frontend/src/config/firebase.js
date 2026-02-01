@@ -53,9 +53,8 @@ auth.languageCode = 'en';
  * Setup reCAPTCHA verifier for phone auth
  */
 export function setupRecaptcha(containerId = 'recaptcha-container') {
-    if (window.recaptchaVerifier) {
-        return window.recaptchaVerifier;
-    }
+    // Always clear existing verifier first to prevent "already rendered" error
+    clearRecaptcha(containerId);
 
     window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
         size: 'invisible',
@@ -64,7 +63,7 @@ export function setupRecaptcha(containerId = 'recaptcha-container') {
         },
         'expired-callback': () => {
             console.log('[Firebase] reCAPTCHA expired');
-            window.recaptchaVerifier = null;
+            clearRecaptcha(containerId);
         },
     });
 
@@ -72,13 +71,32 @@ export function setupRecaptcha(containerId = 'recaptcha-container') {
 }
 
 /**
- * Clear reCAPTCHA verifier
+ * Clear reCAPTCHA verifier and reset DOM element
  */
-export function clearRecaptcha() {
-    if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
+export function clearRecaptcha(containerId = 'recaptcha-container') {
+    try {
+        if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.clear();
+            window.recaptchaVerifier = null;
+        }
+    } catch (error) {
+        console.warn('[Firebase] Error clearing reCAPTCHA verifier:', error);
         window.recaptchaVerifier = null;
     }
+
+    // Reset the DOM element to ensure it can be re-rendered
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.innerHTML = '';
+    }
+
+    // Also clear any grecaptcha badges that might be lingering
+    const badges = document.querySelectorAll('.grecaptcha-badge');
+    badges.forEach(badge => {
+        if (badge.parentElement) {
+            badge.parentElement.removeChild(badge);
+        }
+    });
 }
 
 export default app;
