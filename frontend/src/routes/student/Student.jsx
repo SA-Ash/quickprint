@@ -117,22 +117,77 @@ const Student = () => {
         paymentMethod: paymentMethod,
       };
 
-      // For COD, create order directly
-      // For online payments (razorpay, upi), we'd integrate payment gateway here
-      // For now, mocking all as direct order creation
-      const order = await createOrder(orderData);
+      // Handle different payment methods
+      if (paymentMethod === 'razorpay' || paymentMethod === 'upi') {
+        // For online payments, we need to:
+        // 1. Create order first (with pending payment status)
+        // 2. Initiate Razorpay payment
+        // 3. After payment success, order is automatically updated via webhook
+        
+        const order = await createOrder(orderData);
+        
+        try {
+          // Dynamically import Razorpay service
+          const { default: razorpayService } = await import("../../services/razorpay.service.js");
+          
+          // Create Razorpay order
+          const paymentOrder = await razorpayService.createRazorpayOrder(order.id);
+          
+          // Open Razorpay checkout
+          const paymentResult = await razorpayService.openCheckout({
+            amount: paymentOrder.amount,
+            razorpayOrderId: paymentOrder.providerOrderId,
+            customerName: user?.name || '',
+            customerEmail: user?.email || '',
+            customerPhone: user?.phone || '',
+            description: `Order at ${selectedShop.businessName || selectedShop.name}`,
+          });
+          
+          // Verify payment with backend
+          await razorpayService.verifyPayment({
+            paymentId: paymentOrder.paymentId,
+            razorpayOrderId: paymentResult.razorpayOrderId,
+            razorpayPaymentId: paymentResult.razorpayPaymentId,
+            razorpaySignature: paymentResult.razorpaySignature,
+          });
+          
+          showSuccess(`Payment successful! Order placed at ${selectedShop.businessName || selectedShop.name}!`);
+        } catch (paymentError) {
+          console.error("Payment failed:", paymentError);
+          showError(paymentError.message || "Payment failed. Please try again or use Cash on Delivery.");
+          // Order is already created, redirect to order page anyway
+          setUploadedFile(null);
+          setSelectedShop(null);
+          setShowCart(false);
+          setCurrentPrintConfig(null);
+          setCurrentStep("upload");
+          navigate(`/student/order/${order.id}`);
+          return;
+        }
+        
+        // Reset form and navigate
+        setUploadedFile(null);
+        setSelectedShop(null);
+        setShowCart(false);
+        setCurrentPrintConfig(null);
+        setCurrentStep("upload");
+        navigate(`/student/order/${order.id}`);
+      } else {
+        // For COD, create order directly
+        const order = await createOrder(orderData);
+        
+        showSuccess(`Order placed successfully at ${selectedShop.businessName || selectedShop.name}!`);
+        
+        // Reset form
+        setUploadedFile(null);
+        setSelectedShop(null);
+        setShowCart(false);
+        setCurrentPrintConfig(null);
+        setCurrentStep("upload");
 
-      showSuccess(`Order placed successfully at ${selectedShop.businessName || selectedShop.name}!`);
-      
-      // Reset form
-      setUploadedFile(null);
-      setSelectedShop(null);
-      setShowCart(false);
-      setCurrentPrintConfig(null);
-      setCurrentStep("upload");
-
-      // Navigate to order tracking
-      navigate(`/student/order/${order.id}`);
+        // Navigate to order tracking
+        navigate(`/student/order/${order.id}`);
+      }
     } catch (error) {
       console.error("Order creation failed:", error);
       showError("Failed to place order. Please try again.");

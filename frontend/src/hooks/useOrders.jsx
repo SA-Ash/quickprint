@@ -125,6 +125,7 @@ export const OrdersProvider = ({ children }) => {
           binding: orderData.printConfig?.binding === true || (orderData.printConfig?.binding !== 'No Binding' && orderData.printConfig?.binding !== false),
           sides: orderData.printConfig?.sides || (orderData.printConfig?.doubleSided ? 'double' : 'single'),
         },
+        totalCost: orderData.totalCost, // Include total cost with fees
         paymentMethod: orderData.paymentMethod || 'cod',
       });
 

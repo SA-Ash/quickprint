@@ -52,7 +52,7 @@ const FloatingOrderWidget = () => {
 
   const handleClick = () => {
     if (isExpanded) {
-      navigate(`/order/${activeOrder.id}`);
+      navigate(`/student/order/${activeOrder.id}`);
     } else {
       setIsExpanded(true);
     }

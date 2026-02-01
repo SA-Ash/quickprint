@@ -53,9 +53,10 @@ const App = () => {
             >
               <Route index element={<StudentDashboard />} />
               <Route path="orders" element={<StudentOrders />} />
+              <Route path="order/:orderId" element={<OrderTracking />} />
               <Route path="settings" element={<StudentSettings />} />
             </Route>
-            {/* Order tracking route */}
+            {/* Legacy order tracking route - redirect to /student/order/:orderId */}
             <Route path="/order/:orderId" element={<OrderTracking />} />
             {/* Partner email verification (magic link landing) */}
             <Route path="/partner/verify-email" element={<VerifyPartnerEmail />} />

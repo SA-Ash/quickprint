@@ -101,7 +101,7 @@ const phoneAuthService = {
             const verifyResult = await this.verifyPhoneOTP(otp);
 
             // Then send the Firebase token to our backend for verification
-            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/phone/verify-token`, {
+            const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/auth/phone/verify-token`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
