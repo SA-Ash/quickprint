@@ -439,6 +439,10 @@ export const authController = {
       // Verify the Firebase ID token
       const decodedToken = await verifyFirebaseToken(input.idToken);
 
+      if (!decodedToken) {
+        return reply.code(401).send({ error: 'Invalid Firebase token' });
+      }
+
       // Ensure phone number matches
       if (decodedToken.phone_number !== input.phoneNumber) {
         return reply.code(401).send({ error: 'Phone number mismatch' });

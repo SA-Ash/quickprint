@@ -1014,11 +1014,11 @@ export const authService = {
     });
 
     if (user) {
-      // Update Firebase UID if changed
-      if (user.providerId !== firebaseUid) {
+      // Update googleId if changed (using googleId to store Firebase UID)
+      if (user.googleId !== firebaseUid) {
         await prisma.user.update({
           where: { id: user.id },
-          data: { providerId: firebaseUid, provider: 'firebase' },
+          data: { googleId: firebaseUid },
         });
       }
     } else {
@@ -1026,11 +1026,10 @@ export const authService = {
       user = await prisma.user.create({
         data: {
           phone,
-          provider: 'firebase',
-          providerId: firebaseUid,
-          role: isPartner ? 'SHOP' : 'USER',
+          googleId: firebaseUid, // Store Firebase UID in googleId field
+          role: isPartner ? 'SHOP' : 'STUDENT',
           college: college || null,
-          verified: true, // Phone is verified via Firebase
+          authMethod: 'PHONE_OTP',
         },
       });
     }
@@ -1055,9 +1054,8 @@ export const authService = {
         name: user.name,
         role: user.role,
         college: user.college,
-        verified: user.verified,
       },
-      token: tokens.accessToken,
+      accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
     };
   },
