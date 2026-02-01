@@ -84,24 +84,26 @@ export const paymentController = {
     }
   },
 
-  async handlePaytmCallback(request: FastifyRequest, reply: FastifyReply) {
+  async handleRazorpayWebhook(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const callbackData = request.body as Record<string, string>;
-      const result = await paymentService.handlePaytmCallback(callbackData);
+      const signature = request.headers['x-razorpay-signature'] as string;
+      const payload = JSON.stringify(request.body);
+      
+      const result = await paymentService.handleRazorpayWebhook(payload, signature);
       
       return reply.code(200).send({ 
         status: 'success',
         payment: result,
       });
     } catch (error) {
-      console.error('[Paytm Callback] Error:', error);
+      console.error('[Razorpay Webhook] Error:', error);
       if (error instanceof Error) {
         return reply.code(400).send({ 
           status: 'failed',
           error: error.message,
         });
       }
-      return reply.code(500).send({ error: 'Callback processing failed' });
+      return reply.code(500).send({ error: 'Webhook processing failed' });
     }
   },
 };

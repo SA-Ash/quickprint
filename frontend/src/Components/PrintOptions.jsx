@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Settings, MapPin, Phone, MessageCircle } from "lucide-react";
+import { Settings, MapPin, Phone, MessageCircle, ArrowLeft } from "lucide-react";
 
 const PrintOptions = ({
   onPlaceOrder,
   isPlacingOrder = false,
   selectedShop,
+  onBack,
 }) => {
   const [printType, setPrintType] = useState("Black & White - Single Sided");
   const [binding, setBinding] = useState("No Binding");
@@ -14,6 +15,15 @@ const PrintOptions = ({
   return (
     <div className="w-full lg:flex-1 bg-white rounded-lg p-6 shadow-sm border border-gray-200 h-max mt-6 lg:mt-0">
       <div className="flex items-center gap-3 mb-6">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title="Go back"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+        )}
         <div className="bg-blue-100 p-2 rounded-lg">
           <Settings className="w-5 h-5 text-blue-600" />
         </div>
@@ -27,27 +37,40 @@ const PrintOptions = ({
 
       {selectedShop && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <p className="text-sm font-semibold text-blue-900 mb-2">Print Shop</p>
           <div className="flex items-start gap-3">
             <MapPin className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-blue-900">
-                {selectedShop.name}
+                {selectedShop.businessName || selectedShop.name}
               </p>
               <p className="text-xs text-blue-700 mt-1">
                 {typeof selectedShop.address === 'object' 
                   ? `${selectedShop.address.street}, ${selectedShop.address.city}, ${selectedShop.address.state} - ${selectedShop.address.pincode}`
                   : selectedShop.address}
               </p>
-              {selectedShop.contact && (
-                <div className="flex items-center gap-1 mt-2">
-                  <Phone className="w-3 h-3 text-blue-600" />
-                  <span className="text-xs text-blue-700">
-                    {selectedShop.contact}
-                  </span>
-                </div>
-              )}
             </div>
           </div>
+          {/* Shop Contact Info */}
+          {(selectedShop.contact || selectedShop.owner?.phone) && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-800">
+                    {selectedShop.contact || selectedShop.owner?.phone}
+                  </span>
+                </div>
+                <a
+                  href={`tel:${selectedShop.contact || selectedShop.owner?.phone}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <Phone className="w-3 h-3" />
+                  Call Shop
+                </a>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

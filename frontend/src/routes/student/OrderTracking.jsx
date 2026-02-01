@@ -368,16 +368,25 @@ const OrderTracking = () => {
                 {order.shop?.businessName || order.shopName || "Print Shop"}
               </span>
             </div>
-            {(order.shop?.phone || order.shop?.contact) && (
-              <div className="flex items-center gap-3">
-                <div className="bg-green-100 p-2 rounded-lg">
-                  <Phone className="w-5 h-5 text-green-600" />
+            {(order.shop?.phone || order.shop?.contact || order.shop?.owner?.phone) && (
+              <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <Phone className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Contact Shop</p>
+                    <p className="font-medium text-gray-900">
+                      {order.shop.phone || order.shop.contact || order.shop.owner?.phone}
+                    </p>
+                  </div>
                 </div>
                 <a
-                  href={`tel:${order.shop.phone || order.shop.contact}`}
-                  className="text-indigo-600 hover:underline font-medium"
+                  href={`tel:${order.shop.phone || order.shop.contact || order.shop.owner?.phone}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
                 >
-                  {order.shop.phone || order.shop.contact}
+                  <Phone className="w-4 h-4" />
+                  Call Shop
                 </a>
               </div>
             )}

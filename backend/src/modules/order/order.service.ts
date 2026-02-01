@@ -42,14 +42,19 @@ export const orderService = {
       throw new Error('Shop is currently not accepting orders');
     }
 
+    // Use totalCost from frontend (includes platform fees, GST, etc.)
+    // Falls back to calculating base cost if totalCost not provided
     const pricing = shop.pricing as { bwSingle: number; colorSingle: number; bwDouble: number; colorDouble: number };
-    const totalCost = calculateOrderCost(
+    const baseCost = calculateOrderCost(
       input.file.pages,
       input.printConfig.copies,
       input.printConfig.color,
       input.printConfig.sides === 'double',
       pricing
     );
+    
+    // Use frontend totalCost if provided, otherwise use calculated base cost
+    const totalCost = input.totalCost || baseCost;
 
     const order = await prisma.order.create({
       data: {

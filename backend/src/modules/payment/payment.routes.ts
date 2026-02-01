@@ -6,6 +6,5 @@ export async function paymentRoutes(fastify: FastifyInstance) {
   fastify.post('/verify', paymentController.verifyPayment);
   fastify.get('/:id/status', paymentController.getPaymentStatus);
   fastify.get('/order/:orderId', paymentController.getPaymentByOrder);
-  fastify.post('/paytm/callback', paymentController.handlePaytmCallback);
+  fastify.post('/razorpay/webhook', paymentController.handleRazorpayWebhook);
 }
-

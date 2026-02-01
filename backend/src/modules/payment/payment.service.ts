@@ -1,5 +1,5 @@
 import { prisma } from '../../infrastructure/database/prisma.client.js';
-import { paytmProvider } from './providers/paytm.provider.js';
+import { razorpayProvider } from './providers/razorpay.provider.js';
 import type {
   InitiatePaymentInput,
   VerifyPaymentInput,
@@ -41,8 +41,8 @@ export const paymentService = {
 
     const amountInPaise = Math.round(parseFloat(order.totalCost.toString()) * 100);
 
-    if (provider === 'paytm') {
-      const txnResult = await paytmProvider.initiateTransaction({
+    if (provider === 'razorpay') {
+      const razorpayOrder = await razorpayProvider.createOrder({
         orderId: orderId,
         amount: amountInPaise,
         customerId: order.userId,
@@ -55,7 +55,7 @@ export const paymentService = {
         payment = await prisma.payment.update({
           where: { id: payment.id },
           data: {
-            providerOrderId: txnResult.orderId,
+            providerOrderId: razorpayOrder.razorpayOrderId,
             status: 'PENDING',
           },
         });
@@ -65,31 +65,29 @@ export const paymentService = {
             orderId: orderId,
             amount: new Decimal(order.totalCost.toString()),
             status: 'PENDING',
-            provider: 'paytm',
-            providerOrderId: txnResult.orderId,
+            provider: 'razorpay',
+            providerOrderId: razorpayOrder.razorpayOrderId,
           },
         });
       }
 
-      const config = paytmProvider.getConfig();
+      const config = razorpayProvider.getConfig();
 
       return {
         paymentId: payment.id,
-        providerOrderId: txnResult.orderId,
+        providerOrderId: razorpayOrder.razorpayOrderId,
         amount: amountInPaise,
         currency: 'INR',
-        key: txnResult.txnToken,
+        key: config.keyId,
         orderId: orderId,
-        mid: config.mid,
-        txnToken: txnResult.txnToken,
       };
     }
 
-    throw new Error(`Payment provider '${provider}' not supported. Use 'paytm'.`);
+    throw new Error(`Payment provider '${provider}' not supported. Use 'razorpay'.`);
   },
 
   async verifyPayment(input: VerifyPaymentInput): Promise<PaymentResponse> {
-    const { paymentId, orderId } = input;
+    const { paymentId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = input;
 
     const payment = await prisma.payment.findUnique({
       where: { id: paymentId },
@@ -100,15 +98,19 @@ export const paymentService = {
       throw new Error('Payment not found');
     }
 
-    if (payment.provider === 'paytm') {
-      const txnStatus = await paytmProvider.verifyTransaction(orderId || payment.orderId);
+    if (payment.provider === 'razorpay') {
+      const verification = await razorpayProvider.verifyPayment(
+        razorpayOrderId || payment.providerOrderId || '',
+        razorpayPaymentId || '',
+        razorpaySignature || ''
+      );
 
-      if (txnStatus.status === 'TXN_SUCCESS') {
+      if (verification.status === 'success') {
         const updatedPayment = await prisma.payment.update({
           where: { id: paymentId },
           data: {
             status: 'SUCCESS',
-            providerPayId: txnStatus.txnId,
+            providerPayId: razorpayPaymentId,
           },
         });
 
@@ -127,7 +129,7 @@ export const paymentService = {
         });
 
         return formatPaymentResponse(updatedPayment);
-      } else if (txnStatus.status === 'TXN_FAILURE') {
+      } else if (verification.status === 'failed') {
         await prisma.payment.update({
           where: { id: paymentId },
           data: { status: 'FAILED' },
@@ -136,10 +138,10 @@ export const paymentService = {
         await paymentPublisher.publishPaymentFailed({
           orderId: payment.orderId,
           userId: payment.order.userId,
-          reason: txnStatus.message || 'Payment failed',
+          reason: verification.message || 'Payment failed',
         });
 
-        throw new Error('Payment failed: ' + txnStatus.message);
+        throw new Error('Payment failed: ' + verification.message);
       } else {
         throw new Error('Payment pending verification');
       }
@@ -166,32 +168,36 @@ export const paymentService = {
     return formatPaymentResponse(payment);
   },
 
-  async handlePaytmCallback(callbackData: Record<string, string>): Promise<PaymentResponse> {
-    const orderId = callbackData.ORDERID;
-    const txnId = callbackData.TXNID;
-    const status = callbackData.STATUS;
-    const checksum = callbackData.CHECKSUMHASH;
-
-    const isValid = paytmProvider.verifyCallbackChecksum(callbackData, checksum);
+  async handleRazorpayWebhook(payload: string, signature: string): Promise<PaymentResponse | null> {
+    const isValid = razorpayProvider.verifyWebhookSignature(payload, signature);
     if (!isValid) {
-      throw new Error('Invalid callback checksum');
+      throw new Error('Invalid webhook signature');
     }
 
-    const payment = await prisma.payment.findFirst({
-      where: { providerOrderId: orderId },
-      include: { order: { select: { userId: true } } },
-    });
+    const event = JSON.parse(payload);
+    const eventType = event.event;
 
-    if (!payment) {
-      throw new Error('Payment not found for order');
-    }
+    if (eventType === 'payment.captured') {
+      const paymentData = event.payload.payment.entity;
+      const razorpayOrderId = paymentData.order_id;
+      const razorpayPaymentId = paymentData.id;
+      const amount = paymentData.amount;
 
-    if (status === 'TXN_SUCCESS') {
+      const payment = await prisma.payment.findFirst({
+        where: { providerOrderId: razorpayOrderId },
+        include: { order: { select: { userId: true } } },
+      });
+
+      if (!payment) {
+        console.error(`[Razorpay Webhook] Payment not found for order: ${razorpayOrderId}`);
+        return null;
+      }
+
       const updatedPayment = await prisma.payment.update({
         where: { id: payment.id },
         data: {
           status: 'SUCCESS',
-          providerPayId: txnId,
+          providerPayId: razorpayPaymentId,
         },
       });
 
@@ -200,31 +206,48 @@ export const paymentService = {
         data: { status: 'ACCEPTED' },
       });
 
-      console.log(`[Paytm Callback] Payment success: ${payment.id}`);
+      console.log(`[Razorpay Webhook] Payment success: ${payment.id}`);
 
       await paymentPublisher.publishPaymentSuccess({
         orderId: payment.orderId,
         userId: payment.order.userId,
-        amount: parseFloat(payment.amount.toString()) * 100,
+        amount: amount,
         paymentId: payment.id,
       });
 
       return formatPaymentResponse(updatedPayment);
-    } else {
+    }
+
+    if (eventType === 'payment.failed') {
+      const paymentData = event.payload.payment.entity;
+      const razorpayOrderId = paymentData.order_id;
+
+      const payment = await prisma.payment.findFirst({
+        where: { providerOrderId: razorpayOrderId },
+        include: { order: { select: { userId: true } } },
+      });
+
+      if (!payment) {
+        console.error(`[Razorpay Webhook] Payment not found for order: ${razorpayOrderId}`);
+        return null;
+      }
+
       await prisma.payment.update({
         where: { id: payment.id },
         data: { status: 'FAILED' },
       });
 
-      console.log(`[Paytm Callback] Payment failed: ${payment.id}`);
+      console.log(`[Razorpay Webhook] Payment failed: ${payment.id}`);
 
       await paymentPublisher.publishPaymentFailed({
         orderId: payment.orderId,
         userId: payment.order.userId,
-        reason: callbackData.RESPMSG || 'Payment failed',
+        reason: paymentData.error_description || 'Payment failed',
       });
 
-      throw new Error('Payment failed: ' + callbackData.RESPMSG);
+      return formatPaymentResponse(payment);
     }
+
+    return null;
   },
 };

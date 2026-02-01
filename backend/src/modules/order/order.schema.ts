@@ -15,7 +15,8 @@ export const createOrderSchema = z.object({
     binding: z.boolean().default(false),
     sides: z.enum(['single', 'double']).default('single'),
   }),
-  paymentMethod: z.enum(['cod', 'upi', 'paytm']).default('cod'),
+  totalCost: z.number().positive(), // Full price from frontend including fees
+  paymentMethod: z.enum(['cod', 'upi', 'razorpay']).default('cod'),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;

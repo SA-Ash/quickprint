@@ -2,19 +2,19 @@ import { z } from 'zod';
 
 export const initiatePaymentSchema = z.object({
   orderId: z.string().min(1, 'Order ID is required'),
-  provider: z.enum(['paytm']).default('paytm'),
+  provider: z.enum(['razorpay']).default('razorpay'),
 });
 
 export type InitiatePaymentInput = z.infer<typeof initiatePaymentSchema>;
 
 export const verifyPaymentSchema = z.object({
   paymentId: z.string().min(1),
-  orderId: z.string().optional(),
+  razorpayOrderId: z.string().optional(),
+  razorpayPaymentId: z.string().optional(),
+  razorpaySignature: z.string().optional(),
 });
 
 export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
-
-export const paytmCallbackSchema = z.record(z.string());
 
 export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
 
@@ -34,8 +34,6 @@ export interface InitiatePaymentResponse {
   providerOrderId: string;
   amount: number;
   currency: string;
-  key?: string;
+  key: string;
   orderId: string;
-  mid?: string;
-  txnToken?: string;
 }

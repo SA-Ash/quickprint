@@ -26,15 +26,15 @@ const PAYMENT_METHODS = [
   {
     id: "upi",
     name: "UPI",
-    description: "GPay, PhonePe, Paytm UPI",
+    description: "GPay, PhonePe, BHIM UPI",
     icon: Smartphone,
     color: "purple",
   },
   {
-    id: "paytm",
-    name: "Paytm",
-    description: "Wallet, Cards, Net Banking",
-    icon: Wallet,
+    id: "razorpay",
+    name: "Razorpay",
+    description: "Cards, Net Banking, Wallets",
+    icon: CreditCard,
     color: "blue",
   },
 ];

@@ -8,10 +8,10 @@ const envSchema = z.object({
   // Database
   DATABASE_URL: z.string().url(),
 
-  // JWT
+  // JWT - Increased expiry to prevent frequent logouts
   JWT_SECRET: z.string().min(32),
-  JWT_ACCESS_EXPIRY: z.string().default('15m'),
-  JWT_REFRESH_EXPIRY: z.string().default('7d'),
+  JWT_ACCESS_EXPIRY: z.string().default('1d'),  // Changed from 15m to 1 day
+  JWT_REFRESH_EXPIRY: z.string().default('30d'), // Changed from 7d to 30 days
 
   // Twilio
   TWILIO_SID: z.string().optional(),
@@ -27,10 +27,10 @@ const envSchema = z.object({
   // RabbitMQ (optional for now)
   RABBITMQ_URL: z.string().optional(),
 
-  // Paytm
-  PAYTM_MID: z.string().optional(),
-  PAYTM_MKEY: z.string().optional(),
-  PAYTM_WEBSITE: z.string().default('DEFAULT'),
+  // Razorpay
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
+  RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
   API_BASE_URL: z.string().default('http://localhost:3000'),
 
   // AWS S3 / MinIO

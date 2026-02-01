@@ -49,6 +49,15 @@ const Student = () => {
     setCurrentStep("options");
   };
 
+  // Handle going back to previous step
+  const handleGoBack = () => {
+    if (currentStep === "shop") {
+      setCurrentStep("upload");
+    } else if (currentStep === "options") {
+      setCurrentStep("shop");
+    }
+  };
+
   const handlePlaceOrder = (printConfig) => {
     if (!uploadedFile) {
       showError("Please upload a file first");
@@ -109,7 +118,7 @@ const Student = () => {
       };
 
       // For COD, create order directly
-      // For online payments (paytm, upi), we'd integrate payment gateway here
+      // For online payments (razorpay, upi), we'd integrate payment gateway here
       // For now, mocking all as direct order creation
       const order = await createOrder(orderData);
 
@@ -123,7 +132,7 @@ const Student = () => {
       setCurrentStep("upload");
 
       // Navigate to order tracking
-      navigate(`/order/${order.id}`);
+      navigate(`/student/order/${order.id}`);
     } catch (error) {
       console.error("Order creation failed:", error);
       showError("Failed to place order. Please try again.");
@@ -236,6 +245,7 @@ const Student = () => {
           <ShopSelector
             onShopSelect={handleShopSelect}
             selectedShop={selectedShop}
+            onBack={handleGoBack}
           />
         )}
 
@@ -244,6 +254,7 @@ const Student = () => {
             onPlaceOrder={handlePlaceOrder}
             isPlacingOrder={isPlacingOrder}
             selectedShop={selectedShop}
+            onBack={handleGoBack}
           />
         )}
       </div>

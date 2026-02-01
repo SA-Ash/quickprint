@@ -95,7 +95,7 @@ const Student = () => {
       };
 
       // For COD, create order directly
-      // For online payments (paytm, upi), we'd integrate payment gateway here
+      // For online payments (razorpay, upi), we'd integrate payment gateway here
       // For now, mocking all as direct order creation
       const order = await createOrder(orderData);
 

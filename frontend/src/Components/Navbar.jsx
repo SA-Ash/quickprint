@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useNavigate, NavLink } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
+import { useOrders } from "../hooks/useOrders.jsx";
 import Notifications from "./Notifications";
 import { orderService } from "../services/order.service";
 
@@ -27,6 +28,7 @@ const Navbar = ({ userType = "partner" }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [orderCount, setOrderCount] = useState(0);
   const { user } = useAuth();
+  const { getUnreadCount } = useOrders();
   const navigate = useNavigate();
 
   // Fetch real-time order count
@@ -81,7 +83,8 @@ const Navbar = ({ userType = "partner" }) => {
   const currentUserData = userData[userType];
   const ContactIcon = currentUserData.contactIcon;
 
-  const totalNotifications = currentMenuItems.reduce((acc, item) => acc + (item.count || 0), 0);
+  // Use actual unread notification count from useOrders
+  const totalNotifications = getUnreadCount();
 
 
   const handleSignOut = () => {

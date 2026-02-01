@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { MapPin, Star, Clock, Phone, CheckCircle } from "lucide-react";
+import { MapPin, Star, Clock, Phone, CheckCircle, ArrowLeft } from "lucide-react";
 import { useShops } from "../hooks/useShops";
 import GeoLocationPrompt from "./GeoLocationPrompt";
 
-const ShopSelector = ({ onShopSelect, selectedShop }) => {
+const ShopSelector = ({ onShopSelect, selectedShop, onBack }) => {
   const { shops, loading, error, getNearbyShops, getAllShops } = useShops();
   const [userLocation, setUserLocation] = useState(null);
 
@@ -23,9 +23,22 @@ const ShopSelector = ({ onShopSelect, selectedShop }) => {
 
   return (
     <div className="w-full bg-white rounded-xl p-4 sm:p-5 md:p-6 shadow-sm border border-gray-200">
-      <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 mb-4 sm:mb-5 md:mb-6">
-        Select Print Shop
-      </h2>
+      <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          )}
+          <h2 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900">
+            Select Print Shop
+          </h2>
+        </div>
+      </div>
 
       <GeoLocationPrompt onLocationUpdate={handleLocationUpdate} showRefresh={true} />
 
