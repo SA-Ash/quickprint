@@ -15,7 +15,7 @@ export const createOrderSchema = z.object({
     binding: z.boolean().default(false),
     sides: z.enum(['single', 'double']).default('single'),
   }),
-  totalCost: z.number().positive(), // Full price from frontend including fees
+  totalCost: z.coerce.number().optional(), // Full price from frontend including fees (optional - backend calculates if not provided)
   paymentMethod: z.enum(['cod', 'upi', 'razorpay']).default('cod'),
 });
 
