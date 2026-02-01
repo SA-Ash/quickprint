@@ -190,12 +190,8 @@ const Signup = () => {
 
     setIsLoading(true);
     try {
-      // First verify the email OTP
-      const verifyResult = await emailAuthService.verifyOTP(email, emailOtp);
-      
-      if (!verifyResult?.success && !verifyResult?.user) {
-        // If verifyOTP returns just success, we need to signup separately
-      }
+      // Verify email OTP only (doesn't create user)
+      await emailAuthService.verifyOTPOnly(email, emailOtp);
 
       // Now create the account with both verifications complete
       if (!isPartner) {

@@ -129,6 +129,7 @@ export const emailPasswordSignupSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(1, 'Name is required'),
   college: z.string().optional(),
+  phone: z.string().optional(), // For duplicate checking
 });
 
 export type EmailPasswordSignupInput = z.infer<typeof emailPasswordSignupSchema>;

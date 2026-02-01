@@ -52,6 +52,28 @@ export async function emailOtpRoutes(fastify: FastifyInstance) {
   });
 
   /**
+   * POST /email/otp/verify-only
+   * Verify OTP without creating user (for signup flow)
+   */
+  fastify.post('/otp/verify-only', async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { email, code } = request.body as { email: string; code: string };
+      
+      if (!email || !code) {
+        return reply.code(400).send({ error: 'Email and code are required' });
+      }
+
+      const result = await emailOtpService.verifyOTPOnly(email, code);
+      return reply.code(200).send(result);
+    } catch (error) {
+      console.error('[Email OTP] Verify-only error:', error);
+      return reply.code(401).send({ 
+        error: error instanceof Error ? error.message : 'Verification failed' 
+      });
+    }
+  });
+
+  /**
    * POST /email/magic-link/send
    * Send magic link for passwordless login
    */

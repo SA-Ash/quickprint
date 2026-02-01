@@ -28,6 +28,13 @@ export const emailAuthService = {
     },
 
     /**
+     * Verify OTP only - does NOT create user (for signup flow)
+     */
+    async verifyOTPOnly(email, code) {
+        return apiClient.post('/auth/email/otp/verify-only', { email, code }, { auth: false });
+    },
+
+    /**
      * Send magic link for passwordless login
      */
     async sendMagicLink(email) {

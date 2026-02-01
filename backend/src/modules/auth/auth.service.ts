@@ -627,25 +627,36 @@ export const authService = {
   },
 
   async emailPasswordSignup(input: EmailPasswordSignupInput): Promise<AuthResponse> {
-    const { email, password, name, college } = input;
+    const { email, password, name, college, phone } = input;
 
     // Check for duplicate email
-    const existingUser = await prisma.user.findUnique({
+    const existingByEmail = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (existingUser) {
+    if (existingByEmail) {
       throw new Error('Email already registered. Please login instead.');
+    }
+
+    // Check for duplicate phone (if provided and not a placeholder)
+    if (phone && !phone.startsWith('email_') && !phone.startsWith('+91email_')) {
+      const existingByPhone = await prisma.user.findUnique({
+        where: { phone },
+      });
+
+      if (existingByPhone) {
+        throw new Error('Phone number already registered. Please login instead.');
+      }
     }
 
     const passwordHash = await argon2.hash(password);
 
-    // Generate a placeholder phone number for email-only users
-    const placeholderPhone = `+91${nanoid(10).replace(/[^0-9]/g, '0').substring(0, 10)}`;
+    // Use provided phone or generate placeholder
+    const userPhone = phone || `email_${nanoid(8)}`;
 
     const user = await prisma.user.create({
       data: {
-        phone: placeholderPhone,
+        phone: userPhone,
         email,
         passwordHash,
         name,

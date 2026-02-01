@@ -229,6 +229,32 @@ export const emailOtpService = {
   },
 
   /**
+   * Verify OTP only - does NOT create user (for signup flow)
+   * Just verifies the code is correct and marks email as verified
+   */
+  async verifyOTPOnly(email: string, code: string): Promise<{ success: true; verified: true }> {
+    const storedCode = await getRedis().get(`email:otp:${email}`);
+    
+    if (!storedCode) {
+      throw new Error('Verification code expired. Please request a new code.');
+    }
+    
+    if (storedCode !== code) {
+      throw new Error('Invalid verification code');
+    }
+
+    // Delete used OTP
+    await getRedis().del(`email:otp:${email}`);
+    
+    // Mark email as verified in Redis (5 minutes window for signup to complete)
+    await getRedis().setex(`email:verified:${email}`, 300, 'true');
+    
+    console.log(`[Email OTP] Email verified (no user created): ${email}`);
+    
+    return { success: true, verified: true };
+  },
+
+  /**
    * Send magic link for passwordless auth
    */
   async sendMagicLink(email: string): Promise<{ message: string }> {

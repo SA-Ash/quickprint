@@ -82,7 +82,8 @@ export const AuthProvider = ({ children }) => {
             loginData.email,
             loginData.password,
             loginData.name,
-            loginData.college
+            loginData.college,
+            loginData.phone
           );
           setUser(response.user);
           return { success: true, user: response.user };

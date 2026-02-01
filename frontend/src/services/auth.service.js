@@ -200,9 +200,10 @@ export const authService = {
      * @param {string} password - Password
      * @param {string} name - User's name
      * @param {string} college - Optional college name
+     * @param {string} phone - Optional phone number for duplicate checking
      */
-    async emailPasswordSignup(email, password, name, college) {
-        const response = await apiClient.post('/auth/email/password/signup', { email, password, name, college }, { auth: false });
+    async emailPasswordSignup(email, password, name, college, phone) {
+        const response = await apiClient.post('/auth/email/password/signup', { email, password, name, college, phone }, { auth: false });
 
         if (response.accessToken) {
             apiClient.setTokens(response.accessToken, response.refreshToken);
