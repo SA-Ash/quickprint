@@ -108,39 +108,70 @@ const AllOrders = () => {
 
   const executePrint = async () => {
     try {
-      const fileId = printOrder?.file?.fileId;
-      let printUrl = printOrder?.file?.url || printOrder?.fileUrl;
+      console.log('[Print] Starting print for order:', printOrder?.orderNumber);
+      console.log('[Print] File data:', printOrder?.file);
       
-      // If we have a fileId, fetch the signed URL from the backend
+      const fileId = printOrder?.file?.fileId;
+      const directUrl = printOrder?.file?.url || printOrder?.fileUrl;
+      let printUrl = null;
+      
+      // Always try to get signed URL from backend if we have fileId
       if (fileId) {
+        console.log('[Print] Fetching signed URL for fileId:', fileId);
         const token = localStorage.getItem('accessToken');
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'}/api/files/${fileId}/download`, {
-          headers: {
-            'Authorization': token ? `Bearer ${token}` : '',
-          },
-        });
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
         
-        if (response.ok) {
-          const data = await response.json();
-          printUrl = data.downloadUrl;
+        try {
+          const response = await fetch(`${apiUrl}/api/files/${fileId}/download`, {
+            headers: {
+              'Authorization': token ? `Bearer ${token}` : '',
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            printUrl = data.downloadUrl || data.url;
+            console.log('[Print] Got signed URL:', printUrl);
+          } else {
+            console.warn('[Print] Backend returned error:', response.status);
+          }
+        } catch (fetchError) {
+          console.error('[Print] Failed to fetch signed URL:', fetchError);
+        }
+      }
+      
+      // Fallback to direct URL if backend call failed or no fileId
+      if (!printUrl && directUrl) {
+        console.log('[Print] Using direct URL:', directUrl);
+        // If it's an S3 key (starts with uploads/), we need the full S3 URL
+        if (directUrl.startsWith('uploads/') || directUrl.startsWith('s3://')) {
+          // Construct S3 URL - this is a fallback
+          const bucketName = 'quickprint-uploads';
+          const region = 'ap-south-1';
+          const key = directUrl.replace('s3://', '').replace(`${bucketName}/`, '');
+          printUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
+        } else if (directUrl.startsWith('http')) {
+          printUrl = directUrl;
         }
       }
       
       if (printUrl) {
-        // Open the document in a new window and trigger print
+        console.log('[Print] Opening document:', printUrl);
+        // Open the document in a new window for printing
         const printWindow = window.open(printUrl, '_blank');
         if (printWindow) {
-          printWindow.onload = () => {
-            setTimeout(() => printWindow.print(), 500);
-          };
+          // For PDFs, just open - user can print from browser
+          setShowPrintModal(false);
+        } else {
+          alert('Popup blocked. Please allow popups to print documents.');
         }
-        setShowPrintModal(false);
       } else {
-        alert('Document URL not available');
+        console.error('[Print] No URL available. File data:', printOrder?.file);
+        alert('Document URL not available. Please check if the file was uploaded correctly.');
       }
     } catch (error) {
-      console.error('Error printing document:', error);
-      alert('Failed to load document for printing');
+      console.error('[Print] Error printing document:', error);
+      alert('Failed to load document for printing: ' + error.message);
     }
   };
 
