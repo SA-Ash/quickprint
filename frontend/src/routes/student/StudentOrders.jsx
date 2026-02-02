@@ -61,6 +61,181 @@ const StudentOrders = () => {
     return `${order.pages} pages • ${colorText}, ${sideText}`;
   };
 
+  const formatShortDate = (date) => {
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const statusLabels = {
+    pending: "Pending",
+    accepted: "Accepted",
+    printing: "Printing",
+    ready: "Ready",
+    completed: "Completed",
+    cancelled: "Cancelled",
+  };
+
+  const printReceipt = (order) => {
+    const printContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Receipt - ${order.orderNumber}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; background: white; }
+    .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 120px; color: rgba(99, 102, 241, 0.08); font-weight: bold; pointer-events: none; z-index: -1; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #6366f1; }
+    .logo { font-size: 28px; font-weight: bold; color: #6366f1; }
+    .logo span { color: #1e293b; }
+    .invoice-info { text-align: right; }
+    .invoice-title { font-size: 24px; font-weight: bold; color: #1e293b; }
+    .invoice-number { color: #6366f1; font-weight: 600; margin-top: 5px; }
+    .invoice-date { color: #64748b; font-size: 14px; margin-top: 5px; }
+    .parties { display: flex; justify-content: space-between; margin-bottom: 40px; }
+    .party { width: 45%; }
+    .party-title { font-size: 12px; text-transform: uppercase; color: #64748b; margin-bottom: 8px; font-weight: 600; }
+    .party-name { font-size: 18px; font-weight: 600; color: #1e293b; margin-bottom: 5px; }
+    .party-detail { color: #64748b; font-size: 14px; line-height: 1.6; }
+    .order-details { background: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+    .order-details-title { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 15px; }
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #64748b; }
+    .detail-value { font-weight: 500; color: #1e293b; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+    th { background: #6366f1; color: white; padding: 12px 15px; text-align: left; font-size: 14px; }
+    td { padding: 15px; border-bottom: 1px solid #e2e8f0; }
+    .totals { margin-left: auto; width: 300px; }
+    .total-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+    .grand-total { background: #6366f1; color: white; padding: 15px; border-radius: 8px; margin-top: 10px; font-size: 18px; font-weight: bold; }
+    .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #64748b; font-size: 12px; }
+    .status-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-completed { background: #d1fae5; color: #065f46; }
+    .status-printing { background: #ede9fe; color: #5b21b6; }
+    @media print { body { padding: 20px; } }
+  </style>
+</head>
+<body>
+  <div class="watermark">QuickPrint</div>
+  
+  <div class="header">
+    <div class="logo">Quick<span>Print</span></div>
+    <div class="invoice-info">
+      <div class="invoice-title">RECEIPT</div>
+      <div class="invoice-number">${order.orderNumber}</div>
+      <div class="invoice-date">${formatShortDate(order.createdAt)}</div>
+    </div>
+  </div>
+
+  <div class="parties">
+    <div class="party">
+      <div class="party-title">Bill To</div>
+      <div class="party-name">${order.user?.name || order.customer?.name || "Customer"}</div>
+      <div class="party-detail">
+        ${order.user?.phone || order.customer?.phone || ""}<br>
+        ${order.college || order.user?.college || ""}
+      </div>
+    </div>
+    <div class="party" style="text-align: right;">
+      <div class="party-title">From</div>
+      <div class="party-name">${order.shop?.businessName || order.shop?.name || "QuickPrint Shop"}</div>
+      <div class="party-detail">
+        Print Service Provider<br>
+        QuickPrint Platform
+      </div>
+    </div>
+  </div>
+
+  <div class="order-details">
+    <div class="order-details-title">Order Details</div>
+    <div class="detail-row">
+      <span class="detail-label">Document</span>
+      <span class="detail-value">${order.file?.name || order.fileName || "Document"}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Pages</span>
+      <span class="detail-value">${order.file?.pages || order.pages || 1}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Print Type</span>
+      <span class="detail-value">${order.printConfig?.color || order.color ? "Color" : "Black & White"}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Copies</span>
+      <span class="detail-value">${order.printConfig?.copies || order.copies || 1}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Sides</span>
+      <span class="detail-value">${order.printConfig?.sides === "double" || order.doubleSided ? "Double-Sided" : "Single-Sided"}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Payment Method</span>
+      <span class="detail-value">${order.paymentMethod === "cod" ? "Pay on Delivery" : order.paymentMethod?.toUpperCase() || "Online"}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Status</span>
+      <span class="detail-value status-badge status-${(order.status || "").toLowerCase()}">${statusLabels[order.status?.toLowerCase()] || order.status || "Pending"}</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th style="text-align: center;">Qty</th>
+        <th style="text-align: right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>Print Service</strong><br>
+          <small style="color: #64748b;">${order.printConfig?.color || order.color ? "Color" : "B&W"}, ${order.printConfig?.sides === "double" || order.doubleSided ? "Double" : "Single"}-Sided, ${order.file?.pages || order.pages || 1} pages</small>
+        </td>
+        <td style="text-align: center;">${order.printConfig?.copies || order.copies || 1}</td>
+        <td style="text-align: right; font-weight: 600;">₹${parseFloat(order.totalCost || 0).toFixed(2)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="total-row">
+      <span>Subtotal</span>
+      <span>₹${(parseFloat(order.totalCost || 0) - 2).toFixed(2)}</span>
+    </div>
+    <div class="total-row">
+      <span>Platform Fee</span>
+      <span>₹2.00</span>
+    </div>
+    <div class="grand-total">
+      <div style="display: flex; justify-content: space-between;">
+        <span>Total</span>
+        <span>₹${parseFloat(order.totalCost || 0).toFixed(2)}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p><strong>QuickPrint</strong> - India's Smart Print Platform</p>
+    <p style="margin-top: 5px;">Thank you for your order!</p>
+    <p style="margin-top: 10px; font-size: 10px;">This is a computer-generated receipt and does not require a signature.</p>
+  </div>
+</body>
+</html>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => printWindow.print(), 250);
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
@@ -191,7 +366,7 @@ const StudentOrders = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <button 
-                      onClick={(e) => { e.stopPropagation(); /* Download logic */ }}
+                      onClick={(e) => { e.stopPropagation(); printReceipt(order); }}
                       className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg shadow-sm hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
                       <Download className="h-4 w-4" />

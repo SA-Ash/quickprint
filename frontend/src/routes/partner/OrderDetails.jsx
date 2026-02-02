@@ -266,15 +266,11 @@ const OrderDetails = () => {
   <div class="totals">
     <div class="total-row">
       <span>Subtotal</span>
-      <span>₹${(parseFloat(order.totalCost || 0) * 0.85).toFixed(2)}</span>
+      <span>₹${(parseFloat(order.totalCost || 0) - 2).toFixed(2)}</span>
     </div>
     <div class="total-row">
       <span>Platform Fee</span>
       <span>₹2.00</span>
-    </div>
-    <div class="total-row">
-      <span>Tax (GST 18%)</span>
-      <span>₹${(parseFloat(order.totalCost || 0) * 0.15 - 2).toFixed(2)}</span>
     </div>
     <div class="grand-total">
       <div style="display: flex; justify-content: space-between;">
