@@ -36,14 +36,18 @@ const Navbar = ({ userType = "partner" }) => {
     const fetchOrderCount = async () => {
       try {
         if (userType === "student") {
-          const orders = await orderService.getUserOrders();
+          const response = await orderService.getUserOrders();
+          // API returns { orders: [...], pagination: {...} }
+          const orders = Array.isArray(response) ? response : (response?.orders || []);
           // Count active orders (not completed or cancelled)
           const activeOrders = orders.filter(o => 
             !["COMPLETED", "CANCELLED"].includes(o.status)
           );
           setOrderCount(activeOrders.length);
         } else if (userType === "partner") {
-          const orders = await orderService.getShopOrders();
+          const response = await orderService.getShopOrders();
+          // API returns { orders: [...], pagination: {...} }
+          const orders = Array.isArray(response) ? response : (response?.orders || []);
           const activeOrders = orders.filter(o => 
             !["COMPLETED", "CANCELLED"].includes(o.status)
           );

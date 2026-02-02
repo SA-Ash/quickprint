@@ -12,7 +12,7 @@ import { uploadService } from "../../services/upload.service.js";
 const Student = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { createOrder } = useOrders();
+  const { createOrder, loadOrders } = useOrders();
   const [uploadedFile, setUploadedFile] = useState(null);
   const [selectedShop, setSelectedShop] = useState(null);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
