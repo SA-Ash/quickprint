@@ -210,9 +210,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  // Replace user completely (for new login, not merge)
+  const replaceUser = (userData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+  };
+
   const value = {
     user,
     setUser: updateUser,
+    replaceUser, // For complete user replacement on new login
     login,
     logout,
     loading,

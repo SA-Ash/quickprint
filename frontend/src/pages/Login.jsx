@@ -41,7 +41,7 @@ const Login = () => {
   const [otpLoading, setOtpLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { login, setUser } = useAuth();
+  const { login, replaceUser } = useAuth();
 
   // Auto-detect if input is phone or email
   useEffect(() => {
@@ -114,7 +114,7 @@ const Login = () => {
           localStorage.setItem('user', JSON.stringify(result.user));
           
           // Update React context so navbar shows correct user immediately
-          setUser(result.user);
+          replaceUser(result.user);
           
           showSuccess("Login successful!");
           navigate(isPartner ? "/partner" : "/student");
