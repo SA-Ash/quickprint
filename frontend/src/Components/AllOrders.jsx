@@ -561,7 +561,7 @@ const AllOrders = () => {
               <div className="space-y-2">
                 {[
                   { value: 'PENDING', label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-                  { value: 'ACCEPTED', label: 'Processing', color: 'bg-blue-100 text-blue-700 border-blue-200' }, // Combined
+                  { value: 'PRINTING', label: 'Processing', color: 'bg-blue-100 text-blue-700 border-blue-200' }, // Accept + Print combined
                   { value: 'READY', label: 'Ready', color: 'bg-teal-100 text-teal-700 border-teal-200' },
                   { value: 'COMPLETED', label: 'Completed', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
                   { value: 'CANCELLED', label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200' },

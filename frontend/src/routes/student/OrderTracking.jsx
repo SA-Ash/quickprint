@@ -18,15 +18,18 @@ import {
   BookOpen,
   IndianRupee,
   CreditCard,
+  Star,
+  X,
 } from "lucide-react";
 import { useOrders } from "../../hooks/useOrders.jsx";
 import { orderService } from "../../services/order.service";
 import { wsService, WS_EVENTS } from "../../services/websocket.service";
+import apiClient from "../../services/api";
 
+// Merged ACCEPTED + PRINTING into "Processing" - when partner accepts, printing starts
 const STATUS_STEPS = [
   { key: "PENDING", label: "Order Placed", icon: Clock, color: "yellow", description: "Waiting for shop to accept" },
-  { key: "ACCEPTED", label: "Accepted", icon: CheckCircle, color: "blue", description: "Shop has accepted your order" },
-  { key: "PRINTING", label: "Printing", icon: Printer, color: "purple", description: "Your document is being printed" },
+  { key: "PROCESSING", label: "Processing", icon: Printer, color: "blue", description: "Your document is being printed", matchStatuses: ["ACCEPTED", "PRINTING"] },
   { key: "READY", label: "Ready for Pickup", icon: Package, color: "green", description: "Collect from the shop" },
   { key: "COMPLETED", label: "Completed", icon: CheckCircle, color: "green", description: "Order delivered" },
 ];
@@ -153,8 +156,48 @@ const OrderTracking = () => {
   }
 
   const currentStatus = order.status?.toUpperCase() || order.status;
-  const currentStepIndex = STATUS_STEPS.findIndex((s) => s.key === currentStatus);
+  // Find step index - check matchStatuses for merged steps like PROCESSING
+  const currentStepIndex = STATUS_STEPS.findIndex((s) => 
+    s.key === currentStatus || s.matchStatuses?.includes(currentStatus)
+  );
   const isCancelled = currentStatus === "CANCELLED";
+  const isCompleted = currentStatus === "COMPLETED";
+  
+  // Rating modal state
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [hasRated, setHasRated] = useState(order.hasRated || false);
+  
+  // Show rating modal for completed/cancelled orders that haven't been rated
+  useEffect(() => {
+    if ((isCompleted || isCancelled) && !hasRated && order.shop?.id) {
+      // Small delay before showing modal
+      const timer = setTimeout(() => setShowRatingModal(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCompleted, isCancelled, hasRated, order.shop?.id]);
+  
+  const submitRating = async () => {
+    if (rating === 0) return;
+    
+    try {
+      setSubmittingRating(true);
+      await apiClient.post('/reviews', {
+        shopId: order.shop?.id,
+        rating,
+        comment: ratingComment,
+      });
+      setHasRated(true);
+      setShowRatingModal(false);
+    } catch (error) {
+      console.error("Failed to submit rating:", error);
+    } finally {
+      setSubmittingRating(false);
+    }
+  };
 
   const formatDate = (date) => {
     return new Date(date).toLocaleString("en-IN", {
@@ -401,6 +444,96 @@ const OrderTracking = () => {
           </p>
         </div>
       </div>
+      
+      {/* Rating Modal */}
+      {showRatingModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Rate Your Experience</h3>
+                <p className="text-sm text-gray-500 mt-1">How was your experience with {order.shop?.businessName || order.shop?.name || 'this shop'}?</p>
+              </div>
+              <button 
+                onClick={() => setShowRatingModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Star Rating */}
+            <div className="flex justify-center gap-2 mb-6">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star
+                    className={`w-10 h-10 ${
+                      star <= (hoverRating || rating)
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+            
+            {/* Rating Label */}
+            <div className="text-center mb-4">
+              <span className={`text-lg font-semibold ${rating > 0 ? "text-gray-900" : "text-gray-400"}`}>
+                {rating === 0 && "Tap a star to rate"}
+                {rating === 1 && "Poor"}
+                {rating === 2 && "Fair"}
+                {rating === 3 && "Good"}
+                {rating === 4 && "Very Good"}
+                {rating === 5 && "Excellent!"}
+              </span>
+            </div>
+            
+            {/* Comment */}
+            <textarea
+              placeholder="Share your experience (optional)"
+              value={ratingComment}
+              onChange={(e) => setRatingComment(e.target.value)}
+              className="w-full p-3 border border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent mb-4"
+              rows={3}
+            />
+            
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowRatingModal(false)}
+                className="flex-1 py-3 px-4 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={submitRating}
+                disabled={rating === 0 || submittingRating}
+                className={`flex-1 py-3 px-4 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 ${
+                  rating === 0 || submittingRating
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-indigo-600 text-white hover:bg-indigo-700"
+                }`}
+              >
+                {submittingRating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Rating"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
