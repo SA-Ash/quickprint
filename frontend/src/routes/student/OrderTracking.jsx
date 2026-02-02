@@ -41,6 +41,14 @@ const OrderTracking = () => {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Rating modal state - must be before any conditional returns
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [ratingComment, setRatingComment] = useState("");
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [hasRated, setHasRated] = useState(false);
 
   // Fetch order from local state or API
   useEffect(() => {
@@ -155,7 +163,7 @@ const OrderTracking = () => {
     );
   }
 
-  const currentStatus = order.status?.toUpperCase() || order.status;
+  const currentStatus = order?.status?.toUpperCase() || order?.status;
   // Find step index - check matchStatuses for merged steps like PROCESSING
   const currentStepIndex = STATUS_STEPS.findIndex((s) => 
     s.key === currentStatus || s.matchStatuses?.includes(currentStatus)
@@ -163,22 +171,21 @@ const OrderTracking = () => {
   const isCancelled = currentStatus === "CANCELLED";
   const isCompleted = currentStatus === "COMPLETED";
   
-  // Rating modal state
-  const [showRatingModal, setShowRatingModal] = useState(false);
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [ratingComment, setRatingComment] = useState("");
-  const [submittingRating, setSubmittingRating] = useState(false);
-  const [hasRated, setHasRated] = useState(order.hasRated || false);
-  
   // Show rating modal for completed/cancelled orders that haven't been rated
   useEffect(() => {
-    if ((isCompleted || isCancelled) && !hasRated && order.shop?.id) {
+    if ((isCompleted || isCancelled) && !hasRated && order?.shop?.id) {
       // Small delay before showing modal
       const timer = setTimeout(() => setShowRatingModal(true), 1000);
       return () => clearTimeout(timer);
     }
-  }, [isCompleted, isCancelled, hasRated, order.shop?.id]);
+  }, [isCompleted, isCancelled, hasRated, order?.shop?.id]);
+  
+  // Update hasRated when order loads
+  useEffect(() => {
+    if (order?.hasRated) {
+      setHasRated(true);
+    }
+  }, [order?.hasRated]);
   
   const submitRating = async () => {
     if (rating === 0) return;
