@@ -18,6 +18,7 @@ import { reviewRoutes } from './modules/review/index.js';
 import { notificationRoutes } from './modules/notification/index.js';
 import { uploadRoutes } from './modules/upload/upload.routes.js';
 import { fileRoutes } from './modules/file/file.routes.js';
+import { adminRoutes } from './modules/admin/index.js';
 import { initializeStorage } from './infrastructure/storage/s3.client.js';
 
 import { authMiddleware } from './common/middleware/index.js';
@@ -155,6 +156,9 @@ export async function buildApp() {
 
   // Notification routes (protected)
   await fastify.register(notificationRoutes, { prefix: `${API_PREFIX}/notifications` });
+
+  // Admin routes (protected - admin only)
+  await fastify.register(adminRoutes, { prefix: `${API_PREFIX}/admin` });
 
   return fastify;
 }
