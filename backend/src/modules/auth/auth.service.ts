@@ -430,7 +430,7 @@ export const authService = {
     return { message: 'OTP sent to email successfully' };
   },
 
-  async verifyEmailOTP(email: string, code: string): Promise<AuthResponse> {
+  async verifyEmailOTP(email: string, code: string, isPartner: boolean = false): Promise<AuthResponse> {
     const otpRecord = await prisma.otpVerification.findFirst({
       where: {
         phone: email, 
@@ -452,6 +452,16 @@ export const authService = {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       throw new Error('User not found');
+    }
+
+    // ROLE VALIDATION: Ensure user is logging into correct portal
+    const expectedRole = isPartner ? 'SHOP' : 'STUDENT';
+    if (user.role !== expectedRole) {
+      if (user.role === 'SHOP') {
+        throw new Error('This email is registered as a Partner. Please use the Partner login.');
+      } else {
+        throw new Error('This email is registered as a Student. Please use the Student login.');
+      }
     }
 
     const tokens = generateTokens(user.id);
@@ -1025,6 +1035,16 @@ export const authService = {
     });
 
     if (user) {
+      // ROLE VALIDATION: Ensure user is logging into correct portal
+      const expectedRole = isPartner ? 'SHOP' : 'STUDENT';
+      if (user.role !== expectedRole) {
+        if (user.role === 'SHOP') {
+          throw new Error('This phone is registered as a Partner. Please use the Partner login.');
+        } else {
+          throw new Error('This phone is registered as a Student. Please use the Student login.');
+        }
+      }
+
       // Update googleId if changed (using googleId to store Firebase UID)
       if (user.googleId !== firebaseUid) {
         await prisma.user.update({

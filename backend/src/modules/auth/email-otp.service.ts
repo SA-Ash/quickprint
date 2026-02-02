@@ -154,7 +154,7 @@ export const emailOtpService = {
   /**
    * Verify OTP and authenticate user
    */
-  async verifyOTP(email: string, code: string): Promise<{
+  async verifyOTP(email: string, code: string, isPartner: boolean = false): Promise<{
     accessToken: string;
     refreshToken: string;
     user: {
@@ -195,9 +195,20 @@ export const emailOtpService = {
           phone: `email_${nanoid(8)}`, // Placeholder phone for email-only users
           email,
           authMethod: 'EMAIL_OTP',
+          role: isPartner ? 'SHOP' : 'STUDENT', // Set role based on portal
         },
       });
       console.log(`[Email OTP] New user created: ${user.id}`);
+    } else {
+      // ROLE VALIDATION: Ensure existing user is logging into correct portal
+      const expectedRole = isPartner ? 'SHOP' : 'STUDENT';
+      if (user.role !== expectedRole) {
+        if (user.role === 'SHOP') {
+          throw new Error('This email is registered as a Partner. Please use the Partner login.');
+        } else {
+          throw new Error('This email is registered as a Student. Please use the Student login.');
+        }
+      }
     }
 
     // Generate tokens

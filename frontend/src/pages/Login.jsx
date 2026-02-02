@@ -112,8 +112,8 @@ const Login = () => {
           navigate(isPartner ? "/partner" : "/student");
         }
       } else {
-        // Verify email OTP
-        const result = await emailAuthService.verifyOTP(identifier, otp);
+        // Verify email OTP - pass isPartner for role validation
+        const result = await emailAuthService.verifyOTP(identifier, otp, isPartner);
         if (result?.user) {
           showSuccess("Login successful!");
           navigate(isPartner ? "/partner" : "/student");

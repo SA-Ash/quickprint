@@ -87,6 +87,7 @@ export type EmailOtpInitiateInput = z.infer<typeof emailOtpInitiateSchema>;
 export const emailOtpVerifySchema = z.object({
   email: z.string().email('Invalid email address'),
   code: z.string().length(4, 'OTP must be 4 digits'),
+  isPartner: z.boolean().optional().default(false), // For role validation
 });
 
 export type EmailOtpVerifyInput = z.infer<typeof emailOtpVerifySchema>;

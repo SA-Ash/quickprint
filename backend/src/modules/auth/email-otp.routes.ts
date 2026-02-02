@@ -35,13 +35,13 @@ export async function emailOtpRoutes(fastify: FastifyInstance) {
    */
   fastify.post('/otp/verify', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { email, code } = request.body as { email: string; code: string };
+      const { email, code, isPartner } = request.body as { email: string; code: string; isPartner?: boolean };
       
       if (!email || !code) {
         return reply.code(400).send({ error: 'Email and code are required' });
       }
 
-      const result = await emailOtpService.verifyOTP(email, code);
+      const result = await emailOtpService.verifyOTP(email, code, isPartner || false);
       return reply.code(200).send(result);
     } catch (error) {
       console.error('[Email OTP] Verify error:', error);

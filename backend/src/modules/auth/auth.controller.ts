@@ -199,14 +199,14 @@ export const authController = {
   async verifyEmailOTP(request: FastifyRequest, reply: FastifyReply) {
     try {
       const input = emailOtpVerifySchema.parse(request.body);
-      const result = await authService.verifyEmailOTP(input.email, input.code);
+      const result = await authService.verifyEmailOTP(input.email, input.code, input.isPartner);
       return reply.code(200).send(result);
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === 'ZodError') {
           return reply.code(400).send({ error: 'Validation failed', details: error });
         }
-        if (error.message === 'Invalid or expired OTP') {
+        if (error.message === 'Invalid or expired OTP' || error.message.includes('registered as')) {
           return reply.code(401).send({ error: error.message });
         }
       }

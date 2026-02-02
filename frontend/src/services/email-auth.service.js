@@ -16,8 +16,8 @@ export const emailAuthService = {
     /**
      * Verify OTP and get tokens
      */
-    async verifyOTP(email, code) {
-        const result = await apiClient.post('/auth/email/otp/verify', { email, code }, { auth: false });
+    async verifyOTP(email, code, isPartner = false) {
+        const result = await apiClient.post('/auth/email/otp/verify', { email, code, isPartner }, { auth: false });
 
         if (result.accessToken) {
             apiClient.setTokens(result.accessToken, result.refreshToken);
