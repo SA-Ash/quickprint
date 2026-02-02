@@ -110,24 +110,24 @@ const AllOrders = () => {
     try {
       console.log('[Print] Starting print for order:', printOrder?.orderNumber);
       console.log('[Print] File data:', printOrder?.file);
-      
+
       const fileId = printOrder?.file?.fileId;
       const directUrl = printOrder?.file?.url || printOrder?.fileUrl;
       let printUrl = null;
-      
+
       // Always try to get signed URL from backend if we have fileId
       if (fileId) {
         console.log('[Print] Fetching signed URL for fileId:', fileId);
         const token = localStorage.getItem('accessToken');
         const apiUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        
+
         try {
           const response = await fetch(`${apiUrl}/api/files/${fileId}/download`, {
             headers: {
               'Authorization': token ? `Bearer ${token}` : '',
             },
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             printUrl = data.downloadUrl || data.url;
@@ -139,7 +139,7 @@ const AllOrders = () => {
           console.error('[Print] Failed to fetch signed URL:', fetchError);
         }
       }
-      
+
       // Fallback to direct URL if backend call failed or no fileId
       if (!printUrl && directUrl) {
         console.log('[Print] Using direct URL:', directUrl);
@@ -154,7 +154,7 @@ const AllOrders = () => {
           printUrl = directUrl;
         }
       }
-      
+
       if (printUrl) {
         console.log('[Print] Opening document:', printUrl);
         // Open the document in a new window for printing
@@ -178,7 +178,7 @@ const AllOrders = () => {
   const exportOrders = () => {
     // Create CSV content
     const headers = ['Order ID', 'Customer', 'Date', 'College', 'File', 'Copies', 'Total', 'Payment Method', 'Payment Status', 'Status'];
-    
+
     const csvRows = filteredOrders.map(order => [
       order.orderNumber,
       order.customer?.name || 'N/A',
@@ -191,12 +191,12 @@ const AllOrders = () => {
       order.paymentStatus || 'N/A',
       statusLabels[order.status] || order.status
     ]);
-    
+
     const csvContent = [
       headers.join(','),
       ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
-    
+
     // Create and download file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -285,7 +285,7 @@ const AllOrders = () => {
                 </div>
               </div>
 
-              <button 
+              <button
                 onClick={exportOrders}
                 className="px-6 py-3 flex items-center gap-2 border border-gray-200 rounded-xl text-gray-700 text-sm font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 lg:w-auto justify-center bg-white shadow-sm"
               >
@@ -417,22 +417,20 @@ const AllOrders = () => {
                         </td>
                         <td className="px-6 py-4">
                           <span
-                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
-                              statusStyles[order.status]
-                            }`}
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${statusStyles[order.status]
+                              }`}
                           >
                             <div
-                              className={`w-1.5 h-1.5 rounded-full mr-2 ${
-                                order.status === "pending"
+                              className={`w-1.5 h-1.5 rounded-full mr-2 ${order.status === "pending"
                                   ? "bg-amber-500"
                                   : order.status === "accepted"
-                                  ? "bg-blue-500"
-                                  : order.status === "printing"
-                                  ? "bg-violet-500"
-                                  : order.status === "completed"
-                                  ? "bg-emerald-500"
-                                  : "bg-red-500"
-                              }`}
+                                    ? "bg-blue-500"
+                                    : order.status === "printing"
+                                      ? "bg-violet-500"
+                                      : order.status === "completed"
+                                        ? "bg-emerald-500"
+                                        : "bg-red-500"
+                                }`}
                             ></div>
                             {statusLabels[order.status]}
                           </span>
@@ -440,23 +438,30 @@ const AllOrders = () => {
                         <td className="px-6 py-4">
                           <div className="flex justify-end gap-2">
                             <button
-                              onClick={() =>
-                                navigate(`/partner/orders/${order.id}`)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/partner/orders/${order.id}`);
+                              }}
                               className="p-2 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all duration-200 group-hover:shadow-sm"
                               title="View details"
                             >
                               <Eye size={16} />
                             </button>
                             <button
-                              onClick={() => handleStatusUpdate(order)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStatusUpdate(order);
+                              }}
                               className="p-2 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 text-gray-600 hover:text-emerald-600 transition-all duration-200 group-hover:shadow-sm"
                               title="Update status"
                             >
                               <CheckCircle size={16} />
                             </button>
                             <button
-                              onClick={() => handlePrintDocument(order)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handlePrintDocument(order);
+                              }}
                               className="p-2 rounded-lg border border-gray-200 hover:border-violet-300 hover:bg-violet-50 text-gray-600 hover:text-violet-600 transition-all duration-200 group-hover:shadow-sm hidden sm:block"
                               title="Print document"
                             >
@@ -563,11 +568,10 @@ const AllOrders = () => {
                 ].map((status) => (
                   <label
                     key={status.value}
-                    className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
-                      newStatus === status.value
+                    className={`flex items-center p-3 rounded-xl border cursor-pointer transition-all duration-200 ${newStatus === status.value
                         ? `${status.color} border-2`
                         : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
@@ -642,7 +646,7 @@ const AllOrders = () => {
                 <Printer size={16} className="text-violet-600" />
                 Print Configuration
               </h4>
-              
+
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <div className="flex justify-between items-center py-2 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Document</span>
@@ -658,11 +662,10 @@ const AllOrders = () => {
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-gray-200">
                   <span className="text-sm text-gray-600">Print Type</span>
-                  <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${
-                    printOrder.printConfig?.color || printOrder.color 
-                      ? "bg-violet-100 text-violet-700" 
+                  <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${printOrder.printConfig?.color || printOrder.color
+                      ? "bg-violet-100 text-violet-700"
                       : "bg-gray-200 text-gray-700"
-                  }`}>
+                    }`}>
                     {printOrder.printConfig?.color || printOrder.color ? "Color" : "Black & White"}
                   </span>
                 </div>
@@ -675,8 +678,8 @@ const AllOrders = () => {
                 <div className="flex justify-between items-center py-2">
                   <span className="text-sm text-gray-600">Sides</span>
                   <span className="text-sm font-medium text-gray-900">
-                    {printOrder.printConfig?.sides === "double" || printOrder.doubleSided 
-                      ? "Double-Sided" 
+                    {printOrder.printConfig?.sides === "double" || printOrder.doubleSided
+                      ? "Double-Sided"
                       : "Single-Sided"}
                   </span>
                 </div>
