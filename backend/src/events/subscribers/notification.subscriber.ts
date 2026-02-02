@@ -11,6 +11,7 @@ import type {
 } from '../event.types.js';
 import { notificationService } from '../../modules/notification/notification.service.js';
 import { publishToQueue, QUEUES } from '../../infrastructure/queue/rabbitmq.client.js';
+import { prisma } from '../../infrastructure/database/prisma.client.js';
 
 // Message types for async worker
 interface NotificationQueueMessage {
@@ -22,13 +23,29 @@ interface NotificationQueueMessage {
 export function registerNotificationSubscribers(): void {
   eventBus.subscribe<OrderCreatedPayload>(EVENT_TYPES.ORDER_CREATED, async (event) => {
     try {
-      // Create in-app notification (stored in DB, sent via WebSocket)
+      // Create in-app notification for USER (stored in DB, sent via WebSocket)
       await notificationService.createNotification(event.payload.userId, {
         type: 'order_created',
         title: 'Order Placed Successfully',
         message: `Your order ${event.payload.orderNumber} has been placed`,
         orderId: event.payload.orderId,
       });
+
+      // Create in-app notification for SHOP OWNER (partner)
+      // We need to get the shop owner ID from the shopId
+      const shop = await prisma.shop.findUnique({
+        where: { id: event.payload.shopId },
+        select: { ownerId: true },
+      });
+      
+      if (shop) {
+        await notificationService.createNotification(shop.ownerId, {
+          type: 'new_order',
+          title: 'New Order Received',
+          message: `New order ${event.payload.orderNumber} received!`,
+          orderId: event.payload.orderId,
+        });
+      }
 
       // Publish to RabbitMQ for async SMS/email processing
       await publishToQueue<NotificationQueueMessage>(QUEUES.NOTIFICATIONS, {

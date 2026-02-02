@@ -97,7 +97,11 @@ export const orderService = {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        shop: { select: { id: true, businessName: true, address: true, ownerId: true } },
+        shop: { 
+          include: {
+            owner: { select: { id: true, phone: true } }, // Include owner for their phone
+          },
+        },
         user: { select: { id: true, name: true, phone: true } },
         payment: true,
       },
@@ -192,7 +196,11 @@ export const orderService = {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          shop: { select: { id: true, businessName: true } },
+          shop: { 
+            include: {
+              owner: { select: { id: true, phone: true } },
+            },
+          },
         },
       }),
       prisma.order.count({ where }),
