@@ -107,7 +107,12 @@ const Login = () => {
       if (inputType === "phone") {
         // Verify phone OTP with Firebase and login
         const result = await phoneAuthService.loginWithPhone(otp, college, isPartner);
-        if (result?.user) {
+        if (result?.user && result?.accessToken) {
+          // Store tokens and user data (same as email flow)
+          localStorage.setItem('accessToken', result.accessToken);
+          localStorage.setItem('refreshToken', result.refreshToken);
+          localStorage.setItem('user', JSON.stringify(result.user));
+          
           showSuccess("Login successful!");
           navigate(isPartner ? "/partner" : "/student");
         }
