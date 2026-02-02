@@ -27,7 +27,7 @@ const Navbar = ({ userType = "partner" }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [orderCount, setOrderCount] = useState(0);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { getUnreadCount } = useOrders();
   const navigate = useNavigate();
 
@@ -91,9 +91,13 @@ const Navbar = ({ userType = "partner" }) => {
   const totalNotifications = getUnreadCount();
 
 
-  const handleSignOut = () => {
-    navigate("/login");
-    setIsProfileOpen(false);
+  const handleSignOut = async () => {
+    try {
+      await logout(); // Clear tokens from localStorage
+      navigate("/login");
+    } finally {
+      setIsProfileOpen(false);
+    }
   };
 
   return (
