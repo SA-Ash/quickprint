@@ -83,9 +83,9 @@ const Navbar = ({ userType = "partner" }) => {
     student: { name: user?.name || "Student", sub: user?.phone || "+91 XXXXXXXXXX", contactIcon: Phone },
   };
 
-  const currentMenuItems = menuItems[userType];
-  const currentUserData = userData[userType];
-  const ContactIcon = currentUserData.contactIcon;
+  const currentMenuItems = menuItems[userType] || [];
+  const currentUserData = userData[userType] || { name: "User", sub: "", contactIcon: User };
+  const ContactIcon = currentUserData.contactIcon || User;
 
   // Use actual unread notification count from useOrders
   const totalNotifications = getUnreadCount();
