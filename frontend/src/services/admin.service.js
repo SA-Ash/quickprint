@@ -2,7 +2,7 @@
  * Admin Analytics Service
  * Fetches platform-wide analytics data for admin dashboard
  */
-import apiClient from './api.service';
+import apiClient from './api';
 
 const adminService = {
     /**
