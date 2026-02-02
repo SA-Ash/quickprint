@@ -151,6 +151,9 @@ const Student = () => {
             razorpaySignature: paymentResult.razorpaySignature,
           });
           
+          // Reload orders to get updated status (backend updates status to ACCEPTED on payment success)
+          await loadOrders();
+          
           showSuccess(`Payment successful! Order placed at ${selectedShop.businessName || selectedShop.name}!`);
         } catch (paymentError) {
           console.error("Payment failed:", paymentError);

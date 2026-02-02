@@ -114,16 +114,23 @@ const StudentSettings = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const orders = await orderService.getUserOrders();
-        const totalSpent = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
-        const completed = orders.filter(o => o.status === "COMPLETED").length;
+        const response = await orderService.getUserOrders();
+        // Handle both paginated response {orders: []} and direct array
+        const orders = Array.isArray(response) ? response : (response.orders || []);
+        
+        // Use totalCost (parseFloat to handle string or number)
+        const totalSpent = orders.reduce((sum, o) => {
+          const cost = parseFloat(o.totalCost) || parseFloat(o.totalAmount) || 0;
+          return sum + cost;
+        }, 0);
+        const completed = orders.filter(o => o.status?.toUpperCase() === "COMPLETED").length;
         const pending = orders.filter(o => 
-          ["PENDING", "ACCEPTED", "PRINTING", "READY"].includes(o.status)
+          ["PENDING", "ACCEPTED", "PRINTING", "READY"].includes(o.status?.toUpperCase())
         ).length;
         
         setStats({
           totalOrders: orders.length,
-          totalSpent,
+          totalSpent: totalSpent.toFixed(2),
           completed,
           pending,
           memberSince: user?.createdAt ? new Date(user.createdAt) : null,

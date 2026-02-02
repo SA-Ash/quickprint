@@ -31,8 +31,7 @@ const AllOrders = () => {
   const statusOptions = [
     "All",
     "pending",
-    "accepted",
-    "printing",
+    "processing", // Combined accepted + printing
     "ready",
     "completed",
     "cancelled",
@@ -40,8 +39,9 @@ const AllOrders = () => {
 
   const statusStyles = {
     pending: "bg-amber-50 text-amber-700 border border-amber-200",
-    accepted: "bg-blue-50 text-blue-700 border border-blue-200",
-    printing: "bg-violet-50 text-violet-700 border border-violet-200",
+    accepted: "bg-blue-50 text-blue-700 border border-blue-200", // Keep for display
+    printing: "bg-violet-50 text-violet-700 border border-violet-200", // Keep for display
+    processing: "bg-blue-50 text-blue-700 border border-blue-200", // Combined status
     ready: "bg-teal-50 text-teal-700 border border-teal-200",
     completed: "bg-emerald-50 text-emerald-700 border border-emerald-200",
     cancelled: "bg-red-50 text-red-700 border border-red-200",
@@ -49,8 +49,9 @@ const AllOrders = () => {
 
   const statusLabels = {
     pending: "Pending",
-    accepted: "Accepted",
-    printing: "Printing",
+    accepted: "Processing", // Show as Processing
+    printing: "Processing", // Show as Processing
+    processing: "Processing", // Combined status
     ready: "Ready",
     completed: "Completed",
     cancelled: "Cancelled",
@@ -65,8 +66,15 @@ const AllOrders = () => {
   };
 
   const filteredOrders = orders.filter((order) => {
-    const matchesStatus =
-      selectedStatus === "All" || order.status === selectedStatus;
+    // Handle 'processing' filter matching both 'accepted' and 'printing'
+    let matchesStatus = selectedStatus === "All";
+    if (!matchesStatus) {
+      if (selectedStatus === "processing") {
+        matchesStatus = order.status === "accepted" || order.status === "printing";
+      } else {
+        matchesStatus = order.status === selectedStatus;
+      }
+    }
     const matchesSearch =
       order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -517,8 +525,7 @@ const AllOrders = () => {
               <div className="space-y-2">
                 {[
                   { value: 'PENDING', label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-                  { value: 'ACCEPTED', label: 'Accepted', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-                  { value: 'PRINTING', label: 'Printing', color: 'bg-violet-100 text-violet-700 border-violet-200' },
+                  { value: 'ACCEPTED', label: 'Processing', color: 'bg-blue-100 text-blue-700 border-blue-200' }, // Combined
                   { value: 'READY', label: 'Ready', color: 'bg-teal-100 text-teal-700 border-teal-200' },
                   { value: 'COMPLETED', label: 'Completed', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
                   { value: 'CANCELLED', label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200' },

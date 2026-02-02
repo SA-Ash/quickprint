@@ -309,19 +309,25 @@ export const OrdersProvider = ({ children }) => {
 
   const markAllNotificationsRead = async () => {
     try {
-      if (!USE_MOCK) {
-        await notificationService.markAllAsRead();
-      }
+      // Update local state first for immediate UI feedback
       const updatedNotifications = notifications.map((notif) => ({
         ...notif,
         read: true,
       }));
       setNotifications(updatedNotifications);
+      
       if (USE_MOCK && user) {
         localStorage.setItem(
           `notifications_${user.id}`,
           JSON.stringify(updatedNotifications)
         );
+      }
+      
+      // Then try to sync with backend (don't wait or fail silently)
+      if (!USE_MOCK) {
+        notificationService.markAllAsRead().catch(err => {
+          console.warn("Failed to sync mark all as read with backend:", err);
+        });
       }
     } catch (err) {
       console.error("Failed to mark all notifications as read:", err);

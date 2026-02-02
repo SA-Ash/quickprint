@@ -5,8 +5,8 @@ import { useOrders } from "../hooks/useOrders.jsx";
 
 const STATUS_INFO = {
   PENDING: { label: "Pending", color: "yellow", icon: Clock },
-  ACCEPTED: { label: "Accepted", color: "blue", icon: CheckCircle },
-  PRINTING: { label: "Printing", color: "purple", icon: Printer },
+  ACCEPTED: { label: "Processing", color: "blue", icon: Printer }, // Combined
+  PRINTING: { label: "Processing", color: "blue", icon: Printer }, // Combined
   READY: { label: "Ready", color: "green", icon: Package },
   COMPLETED: { label: "Completed", color: "green", icon: CheckCircle },
   CANCELLED: { label: "Cancelled", color: "red", icon: X },
@@ -18,14 +18,17 @@ const FloatingOrderWidget = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
 
-  // Get the most recent active order
-  const activeOrder = orders?.find(
-    (o) => !["COMPLETED", "CANCELLED"].includes(o.status)
-  );
+  // Get the most recent active order (normalize status to uppercase for comparison)
+  const activeOrder = orders?.find((o) => {
+    const status = (o.status || '').toUpperCase();
+    return !["COMPLETED", "CANCELLED"].includes(status);
+  });
 
   if (!activeOrder || isDismissed) return null;
 
-  const statusInfo = STATUS_INFO[activeOrder.status] || STATUS_INFO.PENDING;
+  // Normalize status to uppercase for STATUS_INFO lookup
+  const normalizedStatus = (activeOrder.status || 'PENDING').toUpperCase();
+  const statusInfo = STATUS_INFO[normalizedStatus] || STATUS_INFO.PENDING;
   const StatusIcon = statusInfo.icon;
 
   const getStatusColor = () => {
