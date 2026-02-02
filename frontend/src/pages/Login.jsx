@@ -41,7 +41,7 @@ const Login = () => {
   const [otpLoading, setOtpLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, setUser } = useAuth();
 
   // Auto-detect if input is phone or email
   useEffect(() => {
@@ -108,10 +108,13 @@ const Login = () => {
         // Verify phone OTP with Firebase and login
         const result = await phoneAuthService.loginWithPhone(otp, college, isPartner);
         if (result?.user && result?.accessToken) {
-          // Store tokens and user data (same as email flow)
+          // Store tokens in localStorage
           localStorage.setItem('accessToken', result.accessToken);
           localStorage.setItem('refreshToken', result.refreshToken);
           localStorage.setItem('user', JSON.stringify(result.user));
+          
+          // Update React context so navbar shows correct user immediately
+          setUser(result.user);
           
           showSuccess("Login successful!");
           navigate(isPartner ? "/partner" : "/student");
