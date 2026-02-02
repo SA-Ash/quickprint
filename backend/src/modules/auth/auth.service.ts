@@ -1053,16 +1053,8 @@ export const authService = {
         });
       }
     } else {
-      // Create new user with phone
-      user = await prisma.user.create({
-        data: {
-          phone,
-          googleId: firebaseUid, // Store Firebase UID in googleId field
-          role: isPartner ? 'SHOP' : 'STUDENT',
-          college: college || null,
-          authMethod: 'PHONE_OTP',
-        },
-      });
+      // Phone number not registered - reject login
+      throw new Error('Phone number not registered. Please sign up first.');
     }
 
     // Generate tokens
