@@ -120,6 +120,24 @@ const OrderTracking = () => {
     }
   }, [orders, orderId]);
 
+  // Show rating modal for completed/cancelled orders that haven't been rated
+  useEffect(() => {
+    if (!order) return;
+    const status = order.status?.toUpperCase();
+    const isCompletedOrCancelled = status === "COMPLETED" || status === "CANCELLED";
+    if (isCompletedOrCancelled && !hasRated && order.shop?.id) {
+      const timer = setTimeout(() => setShowRatingModal(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [order, hasRated]);
+
+  // Update hasRated when order loads
+  useEffect(() => {
+    if (order?.hasRated) {
+      setHasRated(true);
+    }
+  }, [order?.hasRated]);
+
   const handleRefresh = async () => {
     setLoading(true);
     try {
@@ -170,22 +188,6 @@ const OrderTracking = () => {
   );
   const isCancelled = currentStatus === "CANCELLED";
   const isCompleted = currentStatus === "COMPLETED";
-  
-  // Show rating modal for completed/cancelled orders that haven't been rated
-  useEffect(() => {
-    if ((isCompleted || isCancelled) && !hasRated && order?.shop?.id) {
-      // Small delay before showing modal
-      const timer = setTimeout(() => setShowRatingModal(true), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [isCompleted, isCancelled, hasRated, order?.shop?.id]);
-  
-  // Update hasRated when order loads
-  useEffect(() => {
-    if (order?.hasRated) {
-      setHasRated(true);
-    }
-  }, [order?.hasRated]);
   
   const submitRating = async () => {
     if (rating === 0) return;
