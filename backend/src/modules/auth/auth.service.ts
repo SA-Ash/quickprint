@@ -106,23 +106,89 @@ export const authService = {
       data: { verified: true },
     });
 
-    let user = await prisma.user.findUnique({ where: { phone } });
+    const user = await prisma.user.findUnique({ where: { phone } });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          phone,
-          college: college || null,
-          role: 'STUDENT',
-        },
-      });
-      console.log(`👤 New user created: ${user.id}`);
-    } else if (college && !user.college) {
-      user = await prisma.user.update({
+      // User doesn't exist - reject login and instruct to signup
+      throw new Error('NOT_REGISTERED:Phone number not registered. Please sign up first.');
+    }
+
+    // Update college if provided and not set
+    if (college && !user.college) {
+      await prisma.user.update({
         where: { id: user.id },
         data: { college },
       });
     }
+
+    const tokens = generateTokens(user.id);
+
+    await prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: tokens.refreshToken,
+        expiresAt: parseExpiryToDate(env.JWT_REFRESH_EXPIRY),
+      },
+    });
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        phone: user.phone,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        college: user.college,
+      },
+    };
+  },
+
+  /**
+   * Verify OTP for SIGNUP - creates new user
+   * Used when user is registering via phone OTP
+   */
+  async signupVerifyPhoneOTP(input: PhoneVerifyInput & { name?: string }): Promise<AuthResponse> {
+    const { phone, code, college, name } = input;
+
+    // Verify OTP
+    const otpRecord = await prisma.otpVerification.findFirst({
+      where: {
+        phone,
+        otp: code,
+        verified: false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!otpRecord) {
+      throw new Error('Invalid or expired OTP');
+    }
+
+    // Check if user already exists (shouldn't happen if initiatePhoneOTP was called with isSignup=true)
+    const existingUser = await prisma.user.findUnique({ where: { phone } });
+    if (existingUser) {
+      throw new Error('Phone number already registered. Please login instead.');
+    }
+
+    // Mark OTP as verified
+    await prisma.otpVerification.update({
+      where: { id: otpRecord.id },
+      data: { verified: true },
+    });
+
+    // Create new user
+    const user = await prisma.user.create({
+      data: {
+        phone,
+        name: name || null,
+        college: college || null,
+        role: 'STUDENT',
+        authMethod: 'PHONE_OTP',
+      },
+    });
+
+    console.log(`👤 [Signup] New user created: ${user.id}`);
 
     const tokens = generateTokens(user.id);
 
@@ -158,20 +224,13 @@ export const authService = {
 
     const { payload } = verifyResult;
 
-    let user = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { email: payload.email },
     });
 
     if (!user) {
-      user = await prisma.user.create({
-        data: {
-          phone: `+91${nanoid(10)}`, 
-          email: payload.email,
-          name: payload.name,
-          role: 'STUDENT',
-        },
-      });
-      console.log(`[Google Auth] New user created: ${user.id}`);
+      // User doesn't exist - reject login and instruct to signup
+      throw new Error('NOT_REGISTERED:Email not registered. Please sign up first.');
     }
 
     const tokens = generateTokens(user.id);

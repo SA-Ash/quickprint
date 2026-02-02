@@ -15,13 +15,51 @@ export const authService = {
     },
 
     /**
-     * Verify phone OTP and complete login
+     * Initiate phone OTP for student signup
+     * @param {string} phone - Phone number with country code
+     */
+    async initiatePhoneSignup(phone) {
+        return apiClient.post('/auth/phone/signup', { phone }, { auth: false });
+    },
+
+    /**
+     * Verify phone OTP and complete LOGIN (user must exist)
      * @param {string} phone - Phone number
      * @param {string} code - OTP code
      * @param {string} college - Optional college name
+     * @throws {Error} with code NOT_REGISTERED if user doesn't exist
      */
     async verifyPhoneOTP(phone, code, college) {
-        const response = await apiClient.post('/auth/phone/verify', { phone, code, college }, { auth: false });
+        try {
+            const response = await apiClient.post('/auth/phone/verify', { phone, code, college }, { auth: false });
+
+            if (response.accessToken) {
+                apiClient.setTokens(response.accessToken, response.refreshToken);
+                localStorage.setItem('user', JSON.stringify(response.user));
+            }
+
+            return response;
+        } catch (error) {
+            // Check if this is a NOT_REGISTERED error (user needs to signup)
+            if (error.code === 'NOT_REGISTERED' || error.message?.includes('NOT_REGISTERED')) {
+                const notRegisteredError = new Error('Phone number not registered. Please sign up first.');
+                notRegisteredError.code = 'NOT_REGISTERED';
+                notRegisteredError.phone = phone;
+                throw notRegisteredError;
+            }
+            throw error;
+        }
+    },
+
+    /**
+     * Verify phone OTP and complete SIGNUP (creates new user)
+     * @param {string} phone - Phone number
+     * @param {string} code - OTP code
+     * @param {string} name - User's name
+     * @param {string} college - Optional college name
+     */
+    async signupVerifyPhoneOTP(phone, code, name, college) {
+        const response = await apiClient.post('/auth/phone/signup/verify', { phone, code, name, college }, { auth: false });
 
         if (response.accessToken) {
             apiClient.setTokens(response.accessToken, response.refreshToken);

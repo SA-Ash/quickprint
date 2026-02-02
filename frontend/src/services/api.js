@@ -79,6 +79,10 @@ class ApiClient {
             const error = new Error(data?.error || data?.message || `HTTP ${response.status}`);
             error.status = response.status;
             error.data = data;
+            // Include error code for special handling (e.g., NOT_REGISTERED)
+            if (data?.code) {
+                error.code = data.code;
+            }
             throw error;
         }
 

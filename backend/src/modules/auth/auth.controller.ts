@@ -56,6 +56,32 @@ export const authController = {
     }
   },
 
+  /**
+   * Verify OTP for signup - creates new user
+   */
+  async signupVerifyPhoneOTP(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const input = phoneVerifySchema.parse(request.body);
+      // Add name from request body if provided
+      const name = (request.body as any)?.name;
+      const result = await authService.signupVerifyPhoneOTP({ ...input, name });
+      return reply.code(201).send(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        if (error.message === 'Invalid or expired OTP') {
+          return reply.code(401).send({ error: error.message });
+        }
+        if (error.message.includes('already registered')) {
+          return reply.code(409).send({ error: error.message });
+        }
+      }
+      return reply.code(500).send({ error: 'Signup verification failed' });
+    }
+  },
+
   async verifyPhoneOTP(request: FastifyRequest, reply: FastifyReply) {
     try {
       const input = phoneVerifySchema.parse(request.body);
@@ -69,6 +95,15 @@ export const authController = {
         if (error.message === 'Invalid or expired OTP') {
           return reply.code(401).send({ error: error.message });
         }
+        // Handle NOT_REGISTERED error - return 404 with code for frontend redirect
+        if (error.message.startsWith('NOT_REGISTERED:')) {
+          const message = error.message.replace('NOT_REGISTERED:', '');
+          return reply.code(404).send({ 
+            error: message, 
+            code: 'NOT_REGISTERED',
+            phone: (request.body as any)?.phone 
+          });
+        }
       }
       return reply.code(500).send({ error: 'Verification failed' });
     }
@@ -80,8 +115,18 @@ export const authController = {
       const result = await authService.googleAuth(input);
       return reply.code(200).send(result);
     } catch (error) {
-      if (error instanceof Error && error.name === 'ZodError') {
-        return reply.code(400).send({ error: 'Validation failed', details: error });
+      if (error instanceof Error) {
+        if (error.name === 'ZodError') {
+          return reply.code(400).send({ error: 'Validation failed', details: error });
+        }
+        // Handle NOT_REGISTERED error - return 404 with code for frontend redirect
+        if (error.message.startsWith('NOT_REGISTERED:')) {
+          const message = error.message.replace('NOT_REGISTERED:', '');
+          return reply.code(404).send({ 
+            error: message, 
+            code: 'NOT_REGISTERED'
+          });
+        }
       }
       return reply.code(500).send({ error: 'Google authentication failed' });
     }

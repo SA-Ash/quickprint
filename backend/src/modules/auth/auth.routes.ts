@@ -23,9 +23,13 @@ const otpRateLimit = {
 
 export async function authRoutes(fastify: FastifyInstance) {
   // OTP-based auth (stricter limits to prevent SMS/email spam)
+  // Login flow: /phone/initiate -> /phone/verify
   fastify.post('/phone/initiate', otpRateLimit, authController.initiatePhoneOTP);
   fastify.post('/phone/verify', strictRateLimit, authController.verifyPhoneOTP);
+  
+  // Signup flow: /phone/signup -> /phone/signup/verify
   fastify.post('/phone/signup', strictRateLimit, authController.signupPhoneOTP);
+  fastify.post('/phone/signup/verify', strictRateLimit, authController.signupVerifyPhoneOTP);
   
   // Firebase Phone Auth - verify Firebase ID token
   fastify.post('/phone/verify-token', strictRateLimit, authController.verifyFirebasePhone);
