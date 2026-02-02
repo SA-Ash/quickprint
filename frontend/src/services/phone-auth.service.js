@@ -22,8 +22,8 @@ const phoneAuthService = {
             // Clear any existing reCAPTCHA
             clearRecaptcha();
 
-            // Setup reCAPTCHA verifier
-            const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+            // Setup reCAPTCHA verifier (async now to ensure cleanup is complete)
+            const recaptchaVerifier = await setupRecaptcha('recaptcha-container');
 
             // Send OTP
             confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);

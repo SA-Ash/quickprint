@@ -52,9 +52,12 @@ auth.languageCode = 'en';
 /**
  * Setup reCAPTCHA verifier for phone auth
  */
-export function setupRecaptcha(containerId = 'recaptcha-container') {
+export async function setupRecaptcha(containerId = 'recaptcha-container') {
     // Always clear existing verifier first to prevent "already rendered" error
     clearRecaptcha(containerId);
+
+    // Small delay to ensure DOM is fully cleared before re-rendering
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
         size: 'invisible',
@@ -95,6 +98,29 @@ export function clearRecaptcha(containerId = 'recaptcha-container') {
     badges.forEach(badge => {
         if (badge.parentElement) {
             badge.parentElement.removeChild(badge);
+        }
+    });
+
+    // Clear grecaptcha widgets if they exist (for v2 fallback)
+    if (window.grecaptcha && window.grecaptcha.reset) {
+        try {
+            // Find and reset all grecaptcha widget IDs
+            const recaptchaFrames = document.querySelectorAll('iframe[src*="recaptcha"]');
+            recaptchaFrames.forEach(frame => {
+                if (frame.parentElement) {
+                    frame.parentElement.removeChild(frame);
+                }
+            });
+        } catch (e) {
+            console.warn('[Firebase] Error resetting grecaptcha:', e);
+        }
+    }
+
+    // Clear any recaptcha divs created by Firebase
+    const recaptchaDivs = document.querySelectorAll('[id^="recaptcha-"]');
+    recaptchaDivs.forEach(div => {
+        if (div.id !== containerId && div.innerHTML) {
+            div.innerHTML = '';
         }
     });
 }
