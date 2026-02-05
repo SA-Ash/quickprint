@@ -78,26 +78,13 @@ const OrderDetails = () => {
   };
 
   const confirmStatusUpdate = async () => {
-    if (newStatus && newStatus !== order.status) {
+    if (newStatus && newStatus !== order.status?.toUpperCase()) {
       try {
         setUpdating(true);
-        // Map "Processing" properly based on current status
-        // Frontend shows "Processing" but backend requires proper transitions:
-        // PENDING → ACCEPTED (first step of processing)
-        // ACCEPTED → PRINTING (already in processing)
-        let statusToSend = newStatus;
-        const currentStatus = order.status?.toUpperCase();
-        
-        if (newStatus === 'PRINTING') {
-          // User selected "Processing" - determine correct backend status
-          if (currentStatus === 'PENDING') {
-            statusToSend = 'ACCEPTED'; // PENDING → ACCEPTED
-          }
-          // If already ACCEPTED, PRINTING is the correct next step
-        }
-        
-        await updateOrderStatus(order.id, statusToSend);
-        setOrder((prev) => ({ ...prev, status: statusToSend, updatedAt: new Date() }));
+        // Status flow: PENDING → ACCEPTED (Processing) → READY → COMPLETED
+        // CANCELLED can be reached from any state
+        await updateOrderStatus(order.id, newStatus);
+        setOrder((prev) => ({ ...prev, status: newStatus, updatedAt: new Date() }));
         setShowStatusModal(false);
       } catch (err) {
         console.error("Failed to update status:", err);
@@ -585,7 +572,7 @@ const OrderDetails = () => {
               <div className="space-y-2">
                 {[
                   { key: 'PENDING', label: 'Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-                  { key: 'PRINTING', label: 'Processing', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+                  { key: 'ACCEPTED', label: 'Processing', color: 'bg-blue-100 text-blue-800 border-blue-200' },
                   { key: 'READY', label: 'Ready', color: 'bg-teal-100 text-teal-800 border-teal-200' },
                   { key: 'COMPLETED', label: 'Completed', color: 'bg-green-100 text-green-800 border-green-200' },
                   { key: 'CANCELLED', label: 'Cancelled', color: 'bg-red-100 text-red-800 border-red-200' },

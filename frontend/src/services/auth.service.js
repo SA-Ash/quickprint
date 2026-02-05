@@ -165,11 +165,16 @@ export const authService = {
         const user = this.getCurrentUser();
         if (!user?.role) return '/login';
 
-        switch (user.role) {
+        // Normalize role to uppercase for consistent matching
+        const role = user.role.toUpperCase();
+
+        switch (role) {
             case 'SHOP':
+            case 'PARTNER':
                 return '/partner';
             case 'ADMIN':
                 return '/admin';
+            case 'STUDENT':
             default:
                 return '/student';
         }

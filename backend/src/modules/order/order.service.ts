@@ -176,11 +176,14 @@ export const orderService = {
       throw new Error('Not authorized to update this order');
     }
 
+    // Simplified state machine:
+    // PENDING → ACCEPTED (= "Processing") → READY → COMPLETED
+    // CANCELLED can be reached from PENDING, ACCEPTED, or READY
     const validTransitions: Record<string, string[]> = {
       PENDING: ['ACCEPTED', 'CANCELLED'],
-      ACCEPTED: ['PRINTING', 'CANCELLED'],
-      PRINTING: ['READY', 'CANCELLED'],
-      READY: ['COMPLETED'],
+      ACCEPTED: ['READY', 'CANCELLED'],  // Skip PRINTING - ACCEPTED is "Processing"
+      PRINTING: ['READY', 'CANCELLED'],  // Keep for backwards compatibility
+      READY: ['COMPLETED', 'CANCELLED'],
       COMPLETED: [],
       CANCELLED: [],
     };

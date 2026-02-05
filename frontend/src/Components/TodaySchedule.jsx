@@ -30,8 +30,8 @@ const TodaySchedule = () => {
 
   const statusLabels = {
     pending: "Pending",
-    accepted: "Accepted",
-    printing: "Printing",
+    accepted: "Processing",  // Show as Processing
+    printing: "Processing",  // Show as Processing
     ready: "Ready",
     completed: "Completed",
     cancelled: "Cancelled",

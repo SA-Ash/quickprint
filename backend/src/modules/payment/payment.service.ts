@@ -219,7 +219,10 @@ export const paymentService = {
 
       await prisma.order.update({
         where: { id: payment.orderId },
-        data: { status: 'ACCEPTED' },
+        data: { 
+          status: 'ACCEPTED',
+          paymentStatus: 'paid',  // Mark payment as completed
+        },
       });
 
       console.log(`[Razorpay Webhook] Payment success: ${payment.id}`);
