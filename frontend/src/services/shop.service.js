@@ -11,9 +11,14 @@ export const shopService = {
      * @param {number} lat - Latitude
      * @param {number} lng - Longitude
      * @param {number} radius - Search radius in meters (default: 5000)
+     * @param {string|null} userCollege - User's college for filtering shops by service area
      */
-    async getNearbyShops(lat, lng, radius = 5000) {
-        return apiClient.get(`/shops/nearby?lat=${lat}&lng=${lng}&radius=${radius}`, { auth: false });
+    async getNearbyShops(lat, lng, radius = 5000, userCollege = null) {
+        let url = `/shops/nearby?lat=${lat}&lng=${lng}&radius=${radius}`;
+        if (userCollege) {
+            url += `&userCollege=${encodeURIComponent(userCollege)}`;
+        }
+        return apiClient.get(url, { auth: false });
     },
 
     /**

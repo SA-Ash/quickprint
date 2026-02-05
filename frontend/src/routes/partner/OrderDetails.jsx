@@ -568,22 +568,28 @@ const OrderDetails = () => {
 
               <p className="text-sm font-medium text-slate-700 mb-3">Select New Status</p>
               <div className="space-y-2">
-                {Object.keys(statusLabels).map((statusKey) => (
+                {[
+                  { key: 'PENDING', label: 'Pending', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+                  { key: 'PRINTING', label: 'Processing', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+                  { key: 'READY', label: 'Ready', color: 'bg-teal-100 text-teal-800 border-teal-200' },
+                  { key: 'COMPLETED', label: 'Completed', color: 'bg-green-100 text-green-800 border-green-200' },
+                  { key: 'CANCELLED', label: 'Cancelled', color: 'bg-red-100 text-red-800 border-red-200' },
+                ].map((status) => (
                   <label
-                    key={statusKey}
+                    key={status.key}
                     className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      newStatus === statusKey ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
+                      newStatus === status.key ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"
                     }`}
                   >
                     <input
                       type="radio"
-                      value={statusKey}
-                      checked={newStatus === statusKey}
+                      value={status.key}
+                      checked={newStatus === status.key}
                       onChange={(e) => setNewStatus(e.target.value)}
                       className="h-4 w-4 text-blue-600 border-slate-300 focus:ring-blue-500"
                     />
-                    <span className={`px-3 py-1 text-sm rounded-full font-semibold ${getStatusInfo(statusKey).color}`}>
-                      {statusLabels[statusKey]}
+                    <span className={`px-3 py-1 text-sm rounded-full font-semibold ${status.color}`}>
+                      {status.label}
                     </span>
                   </label>
                 ))}

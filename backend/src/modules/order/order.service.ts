@@ -4,6 +4,7 @@ import type { Prisma } from '@prisma/client';
 import type { CreateOrderInput, ListOrdersQuery } from './order.schema.js';
 import { orderPublisher } from '../../events/index.js';
 import { wsGateway } from '../../websocket/index.js';
+import { emailNotificationService } from '../notification/email.notification.service.js';
 
 
 function generateOrderNumber(): string {
@@ -40,6 +41,30 @@ export const orderService = {
 
     if (!shop.isActive) {
       throw new Error('Shop is currently not accepting orders');
+    }
+
+    // Validate service area - get user's college and check if shop serves it
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user?.college) {
+      const serviceAreas = (shop.serviceAreas as Array<{ name: string; active?: boolean }>) || [];
+      const activeAreas = serviceAreas.filter(a => a.active !== false);
+      
+      // Shop must have at least one active service area
+      if (activeAreas.length === 0) {
+        throw new Error('SERVICE_AREA_NOT_AVAILABLE:This shop is not currently delivering to any areas. Please select a different shop.');
+      }
+      
+      // Check if shop serves user's college/area
+      const userCollegeLower = user.college.toLowerCase().trim();
+      const servesUserArea = activeAreas.some(area => {
+        const areaNameLower = area.name.toLowerCase().trim();
+        return areaNameLower.includes(userCollegeLower) || 
+               userCollegeLower.includes(areaNameLower);
+      });
+      
+      if (!servesUserArea) {
+        throw new Error('SERVICE_AREA_NOT_AVAILABLE:This shop is not delivering to your area. Please select a different shop.');
+      }
     }
 
     // Use totalCost from frontend (includes platform fees, GST, etc.)
@@ -89,6 +114,25 @@ export const orderService = {
       totalCost: order.totalCost,
       createdAt: order.createdAt,
     });
+
+    // Send order created email notification (async, don't block)
+    if (user?.email) {
+      const fileData = input.file as { name?: string; pages?: number };
+      emailNotificationService.sendOrderCreatedEmail(
+        user.email,
+        user.name,
+        {
+          orderNumber: order.orderNumber,
+          fileName: fileData.name || 'Document',
+          copies: input.printConfig.copies,
+          pages: fileData.pages || 1,
+          colorType: input.printConfig.color ? 'Color' : 'Black & White',
+          sides: input.printConfig.sides === 'double' ? 'Double-Sided' : 'Single-Sided',
+          totalCost: parseFloat(order.totalCost.toString()),
+          shopName: order.shop.businessName,
+        }
+      ).catch(err => console.error('[Email] Order created notification failed:', err));
+    }
 
     return order;
   },
@@ -176,6 +220,21 @@ export const orderService = {
       status: updatedOrder.status,
       updatedAt: updatedOrder.updatedAt,
     }, order.status);
+
+    // Send email notification for status change (async, don't block)
+    const userData = await prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { email: true, name: true },
+    });
+    if (userData?.email) {
+      emailNotificationService.sendOrderStatusEmail(
+        userData.email,
+        userData.name,
+        updatedOrder.orderNumber,
+        status,
+        updatedOrder.shop.businessName
+      ).catch(err => console.error('[Email] Status update notification failed:', err));
+    }
 
     return updatedOrder;
   },

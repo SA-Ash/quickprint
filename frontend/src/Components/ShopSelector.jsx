@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MapPin, Star, Clock, Phone, CheckCircle, ArrowLeft } from "lucide-react";
 import { useShops } from "../hooks/useShops";
+import { authService } from "../services/auth.service";
 import GeoLocationPrompt from "./GeoLocationPrompt";
 
 const ShopSelector = ({ onShopSelect, selectedShop, onBack }) => {
@@ -9,7 +10,9 @@ const ShopSelector = ({ onShopSelect, selectedShop, onBack }) => {
 
   useEffect(() => {
     if (userLocation && userLocation.lat && userLocation.lng) {
-      getNearbyShops(userLocation.lat, userLocation.lng, 5000);
+      // Get user's college to filter shops by service area
+      const user = authService.getCurrentUser();
+      getNearbyShops(userLocation.lat, userLocation.lng, 5000, user?.college);
     }
   }, [userLocation]);
 

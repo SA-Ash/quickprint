@@ -7,11 +7,11 @@ export const useShops = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const getNearbyShops = useCallback(async (lat, lng, radius = 5000) => {
+  const getNearbyShops = useCallback(async (lat, lng, radius = 5000, userCollege = null) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await shopService.getNearbyShops(lat, lng, radius);
+      const response = await shopService.getNearbyShops(lat, lng, radius, userCollege);
       const shopsData = response.shops || response.data || response;
       setShops(Array.isArray(shopsData) ? shopsData : []);
       return shopsData;

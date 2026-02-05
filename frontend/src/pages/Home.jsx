@@ -17,12 +17,20 @@ import {
   Code,
 } from "lucide-react";
 import ExampleUsage from "../Components/ExampleUsage.jsx";
+import { authService } from "../services/auth.service.js";
 
 const Home = () => {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate("/Login");
+    // Check if user is already authenticated
+    if (authService.isAuthenticated()) {
+      // Redirect to appropriate dashboard based on role
+      const dashboardRoute = authService.getDashboardRoute();
+      navigate(dashboardRoute);
+    } else {
+      navigate("/Login");
+    }
   };
 
   const handleLearnMore = () => {

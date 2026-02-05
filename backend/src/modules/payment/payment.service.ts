@@ -8,6 +8,7 @@ import type {
 } from './payment.schema.js';
 import { Decimal } from '@prisma/client/runtime/library';
 import { paymentPublisher } from '../../events/index.js';
+import { emailNotificationService } from '../notification/email.notification.service.js';
 
 function formatPaymentResponse(payment: any): PaymentResponse {
   return {
@@ -128,6 +129,21 @@ export const paymentService = {
           paymentId: updatedPayment.id,
         });
 
+        // Send payment confirmation email (async, don't block)
+        const orderData = await prisma.order.findUnique({
+          where: { id: payment.orderId },
+          include: { user: { select: { email: true, name: true } } },
+        });
+        if (orderData?.user?.email) {
+          emailNotificationService.sendPaymentConfirmationEmail(
+            orderData.user.email,
+            orderData.user.name,
+            orderData.orderNumber,
+            parseFloat(updatedPayment.amount.toString()),
+            updatedPayment.id
+          ).catch(err => console.error('[Email] Payment confirmation failed:', err));
+        }
+
         return formatPaymentResponse(updatedPayment);
       } else if (verification.status === 'failed') {
         await prisma.payment.update({
@@ -214,6 +230,21 @@ export const paymentService = {
         amount: amount,
         paymentId: payment.id,
       });
+
+      // Send payment confirmation email (async, don't block)
+      const orderData = await prisma.order.findUnique({
+        where: { id: payment.orderId },
+        include: { user: { select: { email: true, name: true } } },
+      });
+      if (orderData?.user?.email) {
+        emailNotificationService.sendPaymentConfirmationEmail(
+          orderData.user.email,
+          orderData.user.name,
+          orderData.orderNumber,
+          parseFloat(updatedPayment.amount.toString()),
+          updatedPayment.id
+        ).catch(err => console.error('[Email] Payment confirmation failed:', err));
+      }
 
       return formatPaymentResponse(updatedPayment);
     }

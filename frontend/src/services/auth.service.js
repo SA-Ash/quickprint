@@ -158,6 +158,24 @@ export const authService = {
     },
 
     /**
+     * Get the appropriate dashboard route based on user role
+     * @returns {string} Dashboard path for the user's role
+     */
+    getDashboardRoute() {
+        const user = this.getCurrentUser();
+        if (!user?.role) return '/login';
+
+        switch (user.role) {
+            case 'SHOP':
+                return '/partner';
+            case 'ADMIN':
+                return '/admin';
+            default:
+                return '/student';
+        }
+    },
+
+    /**
      * Update OTP settings
      * @param {object} settings - { enabled, method, email }
      */

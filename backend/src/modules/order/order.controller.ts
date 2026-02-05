@@ -23,6 +23,14 @@ export const orderController = {
         if (error.name === 'ZodError') {
           return reply.code(400).send({ error: 'Validation failed', details: error });
         }
+        // Handle service area validation error
+        if (error.message.startsWith('SERVICE_AREA_NOT_AVAILABLE:')) {
+          const message = error.message.replace('SERVICE_AREA_NOT_AVAILABLE:', '');
+          return reply.code(400).send({ 
+            error: message, 
+            code: 'SERVICE_AREA_NOT_AVAILABLE' 
+          });
+        }
         if (error.message.includes('not found') || error.message.includes('not accepting')) {
           return reply.code(400).send({ error: error.message });
         }
