@@ -16,6 +16,7 @@ import { showError, showSuccess } from "../utils/errorHandler.js";
 import COLLEGES from "../constants/colleges.js";
 import emailAuthService from "../services/email-auth.service.js";
 import phoneAuthService from "../services/phone-auth.service.js";
+import { authService } from "../services/auth.service.js";
 
 
 const Login = () => {
@@ -42,6 +43,15 @@ const Login = () => {
 
   const navigate = useNavigate();
   const { login, replaceUser } = useAuth();
+
+  // SMART REDIRECT: If user is already authenticated, redirect to their dashboard
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+      const dashboardRoute = authService.getDashboardRoute();
+      console.log('[Login] User already authenticated, redirecting to:', dashboardRoute);
+      navigate(dashboardRoute, { replace: true });
+    }
+  }, [navigate]);
 
   // Auto-detect if input is phone or email
   useEffect(() => {

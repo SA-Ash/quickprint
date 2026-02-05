@@ -81,8 +81,23 @@ const OrderDetails = () => {
     if (newStatus && newStatus !== order.status) {
       try {
         setUpdating(true);
-        await updateOrderStatus(order.id, newStatus);
-        setOrder((prev) => ({ ...prev, status: newStatus, updatedAt: new Date() }));
+        // Map "Processing" properly based on current status
+        // Frontend shows "Processing" but backend requires proper transitions:
+        // PENDING → ACCEPTED (first step of processing)
+        // ACCEPTED → PRINTING (already in processing)
+        let statusToSend = newStatus;
+        const currentStatus = order.status?.toUpperCase();
+        
+        if (newStatus === 'PRINTING') {
+          // User selected "Processing" - determine correct backend status
+          if (currentStatus === 'PENDING') {
+            statusToSend = 'ACCEPTED'; // PENDING → ACCEPTED
+          }
+          // If already ACCEPTED, PRINTING is the correct next step
+        }
+        
+        await updateOrderStatus(order.id, statusToSend);
+        setOrder((prev) => ({ ...prev, status: statusToSend, updatedAt: new Date() }));
         setShowStatusModal(false);
       } catch (err) {
         console.error("Failed to update status:", err);
