@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth.jsx";
 import { OrdersProvider } from "./hooks/useOrders.jsx";
 import { PartnerOrdersProvider } from "./hooks/usePartnerOrders.jsx";
-// ProtectedRoute removed
+import RoleProtectedRoute from "./components/RoleProtectedRoute";
 
 import Layout from "./Layout";
 import PartnerDashboard from "./routes/partner/PartnerDashboard";
@@ -43,12 +43,13 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/adminlogin" element={<Adminlogin />} />
-            {/* Student routes */}
+            {/* Student routes - protected for STUDENT role only */}
             <Route
               path="/student"
               element={
-                // Removed ProtectedRoute
-                <Layout userType="student" />
+                <RoleProtectedRoute allowedRoles={['STUDENT']}>
+                  <Layout userType="student" />
+                </RoleProtectedRoute>
               }
             >
               <Route index element={<StudentDashboard />} />
@@ -60,14 +61,15 @@ const App = () => {
             <Route path="/order/:orderId" element={<OrderTracking />} />
             {/* Partner email verification (magic link landing) */}
             <Route path="/partner/verify-email" element={<VerifyPartnerEmail />} />
-            {/* Partner routes */}
+            {/* Partner routes - protected for SHOP/PARTNER role only */}
             <Route
               path="/partner"
               element={
-                // Removed ProtectedRoute
-                <PartnerOrdersProvider>
-                  <Layout userType="partner" />
-                </PartnerOrdersProvider>
+                <RoleProtectedRoute allowedRoles={['SHOP', 'PARTNER']}>
+                  <PartnerOrdersProvider>
+                    <Layout userType="partner" />
+                  </PartnerOrdersProvider>
+                </RoleProtectedRoute>
               }
             >
               <Route index element={<PartnerDashboard />} />
@@ -78,8 +80,12 @@ const App = () => {
               <Route path="reports" element={<Reports />} />
               <Route path="settings" element={<PartnerSettings />} />
             </Route>
-            {/* Admin routes */}
-            <Route path="/admin" element={<Layout userType="admin" />}>
+            {/* Admin routes - protected for ADMIN role only */}
+            <Route path="/admin" element={
+              <RoleProtectedRoute allowedRoles={['ADMIN']}>
+                <Layout userType="admin" />
+              </RoleProtectedRoute>
+            }>
               <Route path="/admin" element={<Admin />} />
               <Route
                 path="/admin/orders"
