@@ -127,14 +127,21 @@ const Login = () => {
           replaceUser(result.user);
           
           showSuccess("Login successful!");
-          navigate(isPartner ? "/partner" : "/student");
+          // Redirect based on actual user role, not isPartner toggle
+          const dashboardRoute = authService.getDashboardRoute();
+          navigate(dashboardRoute);
         }
       } else {
-        // Verify email OTP - pass isPartner for role validation
+        // Verify email OTP - pass isPartner for new user role assignment
         const result = await emailAuthService.verifyOTP(identifier, otp, isPartner);
         if (result?.user) {
+          // Update React context so navbar shows correct user immediately
+          replaceUser(result.user);
+          
           showSuccess("Login successful!");
-          navigate(isPartner ? "/partner" : "/student");
+          // Redirect based on actual user role from response
+          const dashboardRoute = authService.getDashboardRoute();
+          navigate(dashboardRoute);
         }
       }
     } catch (error) {

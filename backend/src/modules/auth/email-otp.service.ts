@@ -200,15 +200,9 @@ export const emailOtpService = {
       });
       console.log(`[Email OTP] New user created: ${user.id}`);
     } else {
-      // ROLE VALIDATION: Ensure existing user is logging into correct portal
-      const expectedRole = isPartner ? 'SHOP' : 'STUDENT';
-      if (user.role !== expectedRole) {
-        if (user.role === 'SHOP') {
-          throw new Error('This email is registered as a Partner. Please use the Partner login.');
-        } else {
-          throw new Error('This email is registered as a Student. Please use the Student login.');
-        }
-      }
+      // Existing user found - authenticate regardless of portal
+      // Frontend RoleProtectedRoute will redirect to correct dashboard
+      console.log(`[Email OTP] Existing user found: ${user.id} (role: ${user.role})`);
     }
 
     // Generate tokens
