@@ -8,7 +8,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./hooks/useAuth.jsx";
 import { OrdersProvider } from "./hooks/useOrders.jsx";
 import { PartnerOrdersProvider } from "./hooks/usePartnerOrders.jsx";
-import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import RoleProtectedRoute from "./Components/RoleProtectedRoute";
 
 import Layout from "./Layout";
 import PartnerDashboard from "./routes/partner/PartnerDashboard";
