@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Loader2, X, MapPin, Search } from "lucide-react";
+import { Plus, Loader2, X, MapPin, Search, Navigation, LocateFixed } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { shopService } from "../services/shop.service";
 import { showSuccess, showError } from "../utils/errorHandler";
@@ -31,10 +31,11 @@ const ServiceAreas = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [locationLoading, setLocationLoading] = useState(false);
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
 
-  const debouncedSearch = useDebounce(newServiceArea, 300);
+  const debouncedSearch = useDebounce(newServiceArea, 400);
 
   // Load service areas on mount
   useEffect(() => {
@@ -66,6 +67,7 @@ const ServiceAreas = () => {
       if (
         suggestionsRef.current &&
         !suggestionsRef.current.contains(event.target) &&
+        inputRef.current &&
         !inputRef.current.contains(event.target)
       ) {
         setShowSuggestions(false);
@@ -92,6 +94,8 @@ const ServiceAreas = () => {
           active: area.active !== false,
           placeId: area.placeId,
           address: area.address,
+          lat: area.lat,
+          lng: area.lng,
         })));
       }
     } catch (error) {
@@ -102,10 +106,14 @@ const ServiceAreas = () => {
     }
   };
 
+  /**
+   * Search for places using Google Places API (if available) or Nominatim (free fallback)
+   */
   const searchPlaces = async (query) => {
     try {
       setSearchLoading(true);
-      // Use Google Places API if available, otherwise use mock suggestions
+
+      // Try Google Places API first (if Maps JS is loaded with API key)
       if (window.google && window.google.maps && window.google.maps.places) {
         const service = new window.google.maps.places.AutocompleteService();
         service.getPlacePredictions(
@@ -130,19 +138,127 @@ const ServiceAreas = () => {
             setSearchLoading(false);
           }
         );
-      } else {
-        // Fallback: Mock suggestions for local places
-        const mockSuggestions = [
-          { placeId: `mock-${Date.now()}`, name: query, address: `${query}, Hyderabad, Telangana, India` },
-        ];
-        setSuggestions(mockSuggestions);
-        setShowSuggestions(true);
-        setSearchLoading(false);
+        return;
       }
+
+      // Fallback: Use Nominatim (OpenStreetMap) - free, no API key needed
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?` +
+        new URLSearchParams({
+          q: query,
+          format: 'json',
+          addressdetails: '1',
+          limit: '6',
+          countrycodes: 'in',
+        }),
+        {
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'QuickPrint/1.0',
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Search failed');
+      
+      const results = await response.json();
+      
+      const mapped = results.map((r) => ({
+        placeId: `osm-${r.osm_id}`,
+        name: r.address?.amenity || r.address?.building || r.address?.road || r.display_name.split(',')[0],
+        address: r.display_name,
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+      }));
+
+      setSuggestions(mapped);
+      setShowSuggestions(mapped.length > 0);
+      setSearchLoading(false);
     } catch (error) {
       console.error("Failed to search places:", error);
+      setSuggestions([]);
       setSearchLoading(false);
     }
+  };
+
+  /**
+   * Use browser geolocation to get current location, then reverse geocode
+   */
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      showError("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setLocationLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          // Reverse geocode using Nominatim
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?` +
+            new URLSearchParams({
+              lat: latitude.toString(),
+              lon: longitude.toString(),
+              format: 'json',
+              addressdetails: '1',
+            }),
+            {
+              headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'QuickPrint/1.0',
+              },
+            }
+          );
+
+          if (!response.ok) throw new Error('Reverse geocode failed');
+
+          const result = await response.json();
+          const locationName = result.address?.amenity || result.address?.building || 
+                               result.address?.road || result.display_name.split(',')[0];
+          
+          const newArea = {
+            placeId: `loc-${Date.now()}`,
+            name: `📍 ${locationName}`,
+            address: result.display_name,
+            lat: latitude,
+            lng: longitude,
+          };
+
+          // Add directly as a service area
+          await addServiceArea(newArea);
+          showSuccess("Current location added as service area!");
+        } catch (error) {
+          console.error("Reverse geocode error:", error);
+          // Fallback: use raw coords
+          const newArea = {
+            placeId: `loc-${Date.now()}`,
+            name: `📍 Current Location`,
+            address: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+            lat: latitude,
+            lng: longitude,
+          };
+          await addServiceArea(newArea);
+          showSuccess("Current location added!");
+        } finally {
+          setLocationLoading(false);
+        }
+      },
+      (err) => {
+        setLocationLoading(false);
+        if (err.code === 1) {
+          showError("Location access denied. Please enable location permissions in your browser settings.");
+        } else if (err.code === 2) {
+          showError("Location unavailable. Please try again.");
+        } else {
+          showError("Location request timed out. Please try again.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const toggleServiceArea = async (id) => {
@@ -186,6 +302,8 @@ const ServiceAreas = () => {
         name: newArea.name,
         address: newArea.address,
         placeId: newArea.placeId,
+        lat: newArea.lat || null,
+        lng: newArea.lng || null,
         active: true,
       },
     ];
@@ -245,7 +363,7 @@ const ServiceAreas = () => {
 
       <div className="mb-4 sm:mb-6">
         <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-3 sm:mb-4">
-          Colleges/Universities
+          Colleges/Universities & Locations
         </h3>
 
         {serviceAreas.length === 0 ? (
@@ -264,7 +382,7 @@ const ServiceAreas = () => {
                       scope="col"
                       className="px-3 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
-                      College/University
+                      Location
                     </th>
                     <th
                       scope="col"
@@ -290,6 +408,11 @@ const ServiceAreas = () => {
                         {area.address && area.address !== area.name && (
                           <div className="text-xs text-gray-500 mt-1">
                             {area.address}
+                          </div>
+                        )}
+                        {area.lat && area.lng && (
+                          <div className="text-xs text-blue-500 mt-0.5">
+                            📍 {area.lat.toFixed(4)}, {area.lng.toFixed(4)}
                           </div>
                         )}
                       </td>
@@ -333,6 +456,32 @@ const ServiceAreas = () => {
         <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-3 sm:mb-4">
           Add New Service Area
         </h3>
+
+        {/* Use Current Location button */}
+        <button
+          onClick={handleUseCurrentLocation}
+          disabled={locationLoading}
+          className="mb-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+        >
+          {locationLoading ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Detecting your location...
+            </>
+          ) : (
+            <>
+              <LocateFixed className="h-4 w-4" />
+              Use Current Location
+            </>
+          )}
+        </button>
+
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex-1 h-px bg-gray-200"></div>
+          <span className="text-xs text-gray-400 font-medium">OR SEARCH</span>
+          <div className="flex-1 h-px bg-gray-200"></div>
+        </div>
+
         <div className="relative">
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <div className="relative flex-1">
@@ -344,7 +493,7 @@ const ServiceAreas = () => {
                 onChange={(e) => setNewServiceArea(e.target.value)}
                 onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
                 placeholder="Search for college, university or area..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
               />
               {searchLoading && (
                 <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
@@ -379,23 +528,28 @@ const ServiceAreas = () => {
                   className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                 >
                   <div className="flex items-start">
-                    <MapPin className="h-4 w-4 text-gray-400 mt-0.5 mr-2 flex-shrink-0" />
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">
+                    <MapPin className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-900 truncate">
                         {suggestion.name}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-500 truncate">
                         {suggestion.address}
                       </div>
                     </div>
                   </div>
                 </button>
               ))}
+              <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
+                <p className="text-[10px] text-gray-400 text-center">
+                  Powered by OpenStreetMap
+                </p>
+              </div>
             </div>
           )}
         </div>
         <p className="mt-2 text-xs text-gray-500">
-          💡 Start typing to search for colleges, universities, or areas. Select from suggestions or type a custom name.
+          💡 Search for colleges, universities, or any location. Select from suggestions or type a custom name.
         </p>
       </div>
     </div>
