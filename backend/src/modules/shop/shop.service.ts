@@ -22,9 +22,9 @@ function calculateDistance(
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) *
-      Math.sin(dLng / 2);
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLng / 2) *
+    Math.sin(dLng / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
@@ -62,6 +62,7 @@ export const shopService = {
       where: { isActive: true },
     });
 
+<<<<<<< HEAD
     const scoredShops = shops
       .filter((shop) => {
         // Skip shops without valid location data
@@ -101,12 +102,47 @@ export const shopService = {
       .map((shop) => {
         const shopLocation = shop.location as unknown as ShopLocation;
         const distance = calculateDistance(lat, lng, shopLocation.lat, shopLocation.lng);
+=======
+    type ScoredShop = { shop: typeof shops[number]; distance: number; score: number };
+
+    const scoredShops: ScoredShop[] = shops
+      .map((shop): ScoredShop | null => {
+        // Calculate distance to shop's own location (if valid)
+        const shopLocation = shop.location as unknown as ShopLocation | null;
+        let minDistance = Infinity;
+
+        if (shopLocation && typeof shopLocation.lat === 'number' && typeof shopLocation.lng === 'number') {
+          minDistance = calculateDistance(lat, lng, shopLocation.lat, shopLocation.lng);
+        }
+
+        // Also check distance to each active service area that has coordinates
+        const serviceAreas = (shop.serviceAreas || []) as unknown as Array<{
+          lat?: number;
+          lng?: number;
+          active?: boolean;
+        }>;
+
+        for (const area of serviceAreas) {
+          if (area.active !== false && typeof area.lat === 'number' && typeof area.lng === 'number') {
+            const areaDistance = calculateDistance(lat, lng, area.lat, area.lng);
+            if (areaDistance < minDistance) {
+              minDistance = areaDistance;
+            }
+          }
+        }
+
+        // Skip shops with no valid location data at all
+        if (minDistance === Infinity) {
+          return null;
+        }
+
+>>>>>>> ebc7e45 (Fix: Location fix)
         const normalizedRating = shop.rating / 5;
-        const normalizedDistance = Math.min(distance, radiusKm) / radiusKm;
+        const normalizedDistance = Math.min(minDistance, radiusKm) / radiusKm;
         const score = (normalizedRating * RATING_WEIGHT) + ((1 - normalizedDistance) * DISTANCE_WEIGHT);
-        return { shop, distance, score };
+        return { shop, distance: minDistance, score };
       })
-      .filter(({ distance }) => distance <= radiusKm)
+      .filter((entry): entry is ScoredShop => entry !== null && entry.distance <= radiusKm)
       .sort((a, b) => b.score - a.score);
 
     return scoredShops.map(({ shop, distance }) => formatShopResponse(shop, distance));
@@ -350,6 +386,8 @@ export const shopService = {
       name: string;
       address?: string;
       placeId?: string;
+      lat?: number;
+      lng?: number;
       active?: boolean;
     }>
   ): Promise<ShopResponse> {

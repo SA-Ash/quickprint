@@ -1,0 +1,124 @@
+config:
+  target: "https://thequickprint.in"
+  phases:
+    - duration: 30
+      arrivalRate: 10
+      name: "Warm up"
+    - duration: 60
+      arrivalRate: 50
+      name: "Sustained load"
+    - duration: 30
+      arrivalRate: 100
+      name: "Peak load"
+    - duration: 20
+      arrivalRate: 25
+      name: "Cool down"
+  defaults:
+    headers:
+      Content-Type: "application/json"
+  plugins:
+    expect: {}
+
+scenarios:
+  - name: "Health Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+  - name: "Get All Shops"
+    weight: 25
+    flow:
+      - get:
+          url: "/api/shops/all"
+          expect:
+            - statusCode:
+                - 200
+                - 429
+                - 500
+                - 503
+
+  - name: "Get Nearby Shops"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/shops/nearby?lat=12.9716&lng=77.5946&radius=5000"
+          expect:
+            - statusCode:
+                - 200
+                - 429
+                - 500
+                - 503
+
+  - name: "Phone OTP Flow"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/auth/phone/initiate"
+          json:
+            phone: "{{ $randomString(10, '0123456789') }}"
+          expect:
+            - statusCode:
+                - 200
+                - 400
+                - 429
+                - 500
+                - 503
+
+  - name: "Email Login Attempt"
+    weight: 15
+    flow:
+      - post:
+          url: "/api/auth/email/password/login"
+          json:
+            email: "loadtest{{ $randomNumber(1000, 9999) }}@example.com"
+            password: "testpassword123"
+          expect:
+            - statusCode:
+                - 200
+                - 400
+                - 401
+                - 429
+                - 500
+                - 503
+
+  - name: "Calculate Pricing"
+    weight: 10
+    flow:
+      - post:
+          url: "/api/pricing/calculate-price"
+          json:
+            shopId: "test-shop-id"
+            items:
+              - type: "bw"
+                pages: 10
+                copies: 2
+            printConfig:
+              color: false
+              duplex: false
+              paperSize: "A4"
+          expect:
+            - statusCode:
+                - 200
+                - 400
+                - 404
+                - 429
+                - 500
+                - 503
+
+  - name: "Token Refresh"
+    weight: 5
+    flow:
+      - post:
+          url: "/api/auth/refresh"
+          json:
+            refreshToken: "invalid-token-for-load-test"
+          expect:
+            - statusCode:
+                - 200
+                - 401
+                - 429
+                - 500
+                - 503

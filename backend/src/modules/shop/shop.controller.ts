@@ -185,7 +185,7 @@ export const shopController = {
     try {
       const { id } = request.params;
       const query = shopDetailsQuerySchema.parse(request.query);
-      
+
       if (query.lat === undefined || query.lng === undefined) {
         return reply.code(400).send({ error: 'lat and lng are required' });
       }
@@ -249,13 +249,17 @@ export const shopController = {
       }
 
       const { id } = request.params;
-      const { serviceAreas } = request.body as { serviceAreas: Array<{
-        id?: string;
-        name: string;
-        address?: string;
-        placeId?: string;
-        active?: boolean;
-      }> };
+      const { serviceAreas } = request.body as {
+        serviceAreas: Array<{
+          id?: string;
+          name: string;
+          address?: string;
+          placeId?: string;
+          lat?: number;
+          lng?: number;
+          active?: boolean;
+        }>
+      };
 
       const shop = await shopService.updateServiceAreas(id, request.user.id, serviceAreas);
       return reply.code(200).send(shop);

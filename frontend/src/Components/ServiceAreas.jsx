@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+<<<<<<< HEAD
 import { Plus, Loader2, X, MapPin, Search, Navigation, LocateFixed } from "lucide-react";
+=======
+import { Plus, Loader2, X, MapPin, Search, Navigation } from "lucide-react";
+>>>>>>> ebc7e45 (Fix: Location fix)
 import { useAuth } from "../hooks/useAuth";
 import { shopService } from "../services/shop.service";
 import { showSuccess, showError } from "../utils/errorHandler";
@@ -31,7 +35,11 @@ const ServiceAreas = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+<<<<<<< HEAD
   const [locationLoading, setLocationLoading] = useState(false);
+=======
+  const [geoLoading, setGeoLoading] = useState(false);
+>>>>>>> ebc7e45 (Fix: Location fix)
   const inputRef = useRef(null);
   const suggestionsRef = useRef(null);
 
@@ -83,7 +91,7 @@ const ServiceAreas = () => {
       setLoading(true);
       const response = await shopService.getMyShop();
       const shop = response.shop || response;
-      
+
       if (shop && shop.id) {
         setShopId(shop.id);
         // Load service areas from shop data
@@ -181,14 +189,46 @@ const ServiceAreas = () => {
     }
   };
 
+<<<<<<< HEAD
   /**
    * Use browser geolocation to get current location, then reverse geocode
    */
   const handleUseCurrentLocation = () => {
+=======
+  // Geocode a place ID to get lat/lng using Google Places Details API
+  const geocodePlaceId = (placeId) => {
+    return new Promise((resolve) => {
+      if (!window.google || !window.google.maps || !window.google.maps.places) {
+        resolve(null);
+        return;
+      }
+      const service = new window.google.maps.places.PlacesService(
+        document.createElement("div")
+      );
+      service.getDetails(
+        { placeId, fields: ["geometry"] },
+        (place, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && place?.geometry?.location) {
+            resolve({
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng(),
+            });
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  };
+
+  // Add service area using browser geolocation ("Use Current Location")
+  const addCurrentLocation = async () => {
+>>>>>>> ebc7e45 (Fix: Location fix)
     if (!navigator.geolocation) {
       showError("Geolocation is not supported by your browser");
       return;
     }
+<<<<<<< HEAD
 
     setLocationLoading(true);
 
@@ -256,6 +296,65 @@ const ServiceAreas = () => {
         } else {
           showError("Location request timed out. Please try again.");
         }
+=======
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        try {
+          // Try to reverse-geocode for a name
+          let name = `Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+          let address = name;
+          if (window.google && window.google.maps) {
+            const geocoder = new window.google.maps.Geocoder();
+            try {
+              const result = await new Promise((resolve, reject) => {
+                geocoder.geocode(
+                  { location: { lat: latitude, lng: longitude } },
+                  (results, status) => {
+                    if (status === "OK" && results && results.length > 0) {
+                      resolve(results[0]);
+                    } else {
+                      reject(new Error("Geocode failed"));
+                    }
+                  }
+                );
+              });
+              name = result.formatted_address?.split(",")[0] || name;
+              address = result.formatted_address || address;
+            } catch (e) {
+              // Use coordinate-based name as fallback
+            }
+          }
+
+          const newArea = {
+            id: `area-${Date.now()}`,
+            name,
+            address,
+            lat: latitude,
+            lng: longitude,
+            active: true,
+          };
+
+          const updatedAreas = [...serviceAreas, newArea];
+          setServiceAreas(updatedAreas);
+
+          if (!USE_MOCK && shopId) {
+            await shopService.updateServiceAreas(shopId, updatedAreas);
+            showSuccess("Location added as service area!");
+          }
+        } catch (error) {
+          console.error("Failed to add current location:", error);
+          showError("Failed to add location");
+        } finally {
+          setGeoLoading(false);
+        }
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        showError("Could not get your location. Please check permissions.");
+        setGeoLoading(false);
+>>>>>>> ebc7e45 (Fix: Location fix)
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -295,6 +394,12 @@ const ServiceAreas = () => {
       return;
     }
 
+    // Try to geocode the place for lat/lng if it has a placeId
+    let coords = null;
+    if (newArea.placeId && !newArea.placeId.startsWith("mock-")) {
+      coords = await geocodePlaceId(newArea.placeId);
+    }
+
     const updatedAreas = [
       ...serviceAreas,
       {
@@ -302,8 +407,13 @@ const ServiceAreas = () => {
         name: newArea.name,
         address: newArea.address,
         placeId: newArea.placeId,
+<<<<<<< HEAD
         lat: newArea.lat || null,
         lng: newArea.lng || null,
+=======
+        ...(coords && { lat: coords.lat, lng: coords.lng }),
+        ...(newArea.lat && newArea.lng && { lat: newArea.lat, lng: newArea.lng }),
+>>>>>>> ebc7e45 (Fix: Location fix)
         active: true,
       },
     ];
@@ -402,27 +512,40 @@ const ServiceAreas = () => {
                   {serviceAreas.map((area) => (
                     <tr key={area.id}>
                       <td className="px-3 sm:px-6 py-3 sm:py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {area.name}
-                        </div>
-                        {area.address && area.address !== area.name && (
-                          <div className="text-xs text-gray-500 mt-1">
-                            {area.address}
+                        <div className="flex items-start">
+                          <MapPin className="h-4 w-4 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {area.name}
+                            </div>
+                            {area.address && area.address !== area.name && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                {area.address}
+                              </div>
+                            )}
+                            {area.lat && area.lng && (
+                              <div className="text-xs text-red-500 mt-1">
+                                📍 {area.lat.toFixed(4)}, {area.lng.toFixed(4)}
+                              </div>
+                            )}
                           </div>
+<<<<<<< HEAD
                         )}
                         {area.lat && area.lng && (
                           <div className="text-xs text-blue-500 mt-0.5">
                             📍 {area.lat.toFixed(4)}, {area.lng.toFixed(4)}
                           </div>
                         )}
+=======
+                        </div>
+>>>>>>> ebc7e45 (Fix: Location fix)
                       </td>
                       <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-500">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            area.active
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${area.active
                               ? "bg-green-100 text-green-800"
                               : "bg-red-100 text-red-800"
-                          }`}
+                            }`}
                         >
                           {area.active ? "Active" : "Inactive"}
                         </span>
@@ -459,6 +582,7 @@ const ServiceAreas = () => {
 
         {/* Use Current Location button */}
         <button
+<<<<<<< HEAD
           onClick={handleUseCurrentLocation}
           disabled={locationLoading}
           className="mb-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
@@ -482,6 +606,21 @@ const ServiceAreas = () => {
           <div className="flex-1 h-px bg-gray-200"></div>
         </div>
 
+=======
+          onClick={addCurrentLocation}
+          disabled={geoLoading}
+          className="w-full mb-3 flex items-center justify-center gap-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {geoLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <Navigation className="h-5 w-5" />
+          )}
+          {geoLoading ? "Getting Location..." : "Use Current Location"}
+        </button>
+
+        <div className="text-center text-sm text-gray-500 mb-3">OR SEARCH</div>
+>>>>>>> ebc7e45 (Fix: Location fix)
         <div className="relative">
           <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
             <div className="relative flex-1">
@@ -549,7 +688,11 @@ const ServiceAreas = () => {
           )}
         </div>
         <p className="mt-2 text-xs text-gray-500">
+<<<<<<< HEAD
           💡 Search for colleges, universities, or any location. Select from suggestions or type a custom name.
+=======
+          💡 Search for colleges, universities, or areas. Select from suggestions or type a custom name.
+>>>>>>> ebc7e45 (Fix: Location fix)
         </p>
       </div>
     </div>
