@@ -62,47 +62,6 @@ export const shopService = {
       where: { isActive: true },
     });
 
-<<<<<<< HEAD
-    const scoredShops = shops
-      .filter((shop) => {
-        // Skip shops without valid location data
-        const loc = shop.location as unknown as ShopLocation | null;
-        if (!loc || typeof loc.lat !== 'number' || typeof loc.lng !== 'number') {
-          return false;
-        }
-        
-        // Filter by service areas - shop must have active service areas to be visible
-        const serviceAreas = (shop.serviceAreas as Array<{ name: string; active?: boolean }>) || [];
-        
-        // If shop has no service areas defined, it's not visible to users
-        if (serviceAreas.length === 0) {
-          return false;
-        }
-        
-        // Check for active service areas (default to active if not specified)
-        const activeAreas = serviceAreas.filter(a => a.active !== false);
-        if (activeAreas.length === 0) {
-          return false;
-        }
-        
-        // If user has a college, only show shops that serve that area
-        if (userCollege) {
-          const userCollegeLower = userCollege.toLowerCase().trim();
-          return activeAreas.some(area => {
-            const areaNameLower = area.name.toLowerCase().trim();
-            // Match if area name contains user's college or vice versa
-            return areaNameLower.includes(userCollegeLower) || 
-                   userCollegeLower.includes(areaNameLower);
-          });
-        }
-        
-        // No college filter - show all shops with active service areas
-        return true;
-      })
-      .map((shop) => {
-        const shopLocation = shop.location as unknown as ShopLocation;
-        const distance = calculateDistance(lat, lng, shopLocation.lat, shopLocation.lng);
-=======
     type ScoredShop = { shop: typeof shops[number]; distance: number; score: number };
 
     const scoredShops: ScoredShop[] = shops
@@ -136,7 +95,6 @@ export const shopService = {
           return null;
         }
 
->>>>>>> ebc7e45 (Fix: Location fix)
         const normalizedRating = shop.rating / 5;
         const normalizedDistance = Math.min(minDistance, radiusKm) / radiusKm;
         const score = (normalizedRating * RATING_WEIGHT) + ((1 - normalizedDistance) * DISTANCE_WEIGHT);
