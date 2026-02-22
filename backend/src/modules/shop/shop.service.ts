@@ -381,38 +381,4 @@ export const shopService = {
       createdAt: p.createdAt,
     }));
   },
-
-  async updateServiceAreas(
-    shopId: string,
-    ownerId: string,
-    serviceAreas: Array<{
-      id?: string;
-      name: string;
-      address?: string;
-      placeId?: string;
-      lat?: number;
-      lng?: number;
-      active?: boolean;
-    }>
-  ): Promise<ShopResponse> {
-    const existingShop = await prisma.shop.findUnique({ where: { id: shopId } });
-    if (!existingShop) {
-      throw new Error('Shop not found');
-    }
-    if (existingShop.ownerId !== ownerId) {
-      throw new Error('Not authorized to update this shop');
-    }
-
-    // Store service areas as JSON in the shop's services field or a dedicated field
-    // For now, we'll add it to a serviceAreas JSON field
-    const shop = await prisma.shop.update({
-      where: { id: shopId },
-      data: {
-        // Store as JSON - Prisma will handle serialization
-        serviceAreas: serviceAreas as any,
-      },
-    });
-
-    return formatShopResponse(shop);
-  },
 };
