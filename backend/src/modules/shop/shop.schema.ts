@@ -73,6 +73,8 @@ export interface ServiceArea {
   name: string;
   address?: string;
   placeId?: string;
+  lat?: number;
+  lng?: number;
   active?: boolean;
 }
 

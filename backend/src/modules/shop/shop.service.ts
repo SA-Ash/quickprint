@@ -58,9 +58,13 @@ export const shopService = {
     const RATING_WEIGHT = 0.4;
     const DISTANCE_WEIGHT = 0.6;
 
+    console.log(`[Shop Service] getNearbyShops called: lat=${lat}, lng=${lng}, radius=${radius}m (${radiusKm}km), userCollege=${userCollege}`);
+
     const shops = await prisma.shop.findMany({
       where: { isActive: true },
     });
+
+    console.log(`[Shop Service] Found ${shops.length} active shops in database`);
 
     type ScoredShop = { shop: typeof shops[number]; distance: number; score: number };
 
@@ -72,28 +76,38 @@ export const shopService = {
 
         if (shopLocation && typeof shopLocation.lat === 'number' && typeof shopLocation.lng === 'number') {
           minDistance = calculateDistance(lat, lng, shopLocation.lat, shopLocation.lng);
+          console.log(`[Shop Service] Shop "${shop.businessName}" own location: ${shopLocation.lat},${shopLocation.lng} -> distance: ${minDistance.toFixed(2)}km`);
         }
 
         // Also check distance to each active service area that has coordinates
         const serviceAreas = (shop.serviceAreas || []) as unknown as Array<{
+          name?: string;
           lat?: number;
           lng?: number;
           active?: boolean;
         }>;
 
+        console.log(`[Shop Service] Shop "${shop.businessName}" has ${serviceAreas.length} service areas:`, JSON.stringify(serviceAreas));
+
         for (const area of serviceAreas) {
           if (area.active !== false && typeof area.lat === 'number' && typeof area.lng === 'number') {
             const areaDistance = calculateDistance(lat, lng, area.lat, area.lng);
+            console.log(`[Shop Service]   Area "${area.name}": ${area.lat},${area.lng} -> distance: ${areaDistance.toFixed(2)}km`);
             if (areaDistance < minDistance) {
               minDistance = areaDistance;
             }
+          } else {
+            console.log(`[Shop Service]   Area "${area.name}": NO coordinates (lat=${area.lat}, lng=${area.lng}, active=${area.active})`);
           }
         }
 
         // Skip shops with no valid location data at all
         if (minDistance === Infinity) {
+          console.log(`[Shop Service] Shop "${shop.businessName}" SKIPPED - no valid location data`);
           return null;
         }
+
+        console.log(`[Shop Service] Shop "${shop.businessName}" minDistance=${minDistance.toFixed(2)}km, radiusKm=${radiusKm}km, within=${minDistance <= radiusKm}`);
 
         const normalizedRating = shop.rating / 5;
         const normalizedDistance = Math.min(minDistance, radiusKm) / radiusKm;
@@ -103,6 +117,7 @@ export const shopService = {
       .filter((entry): entry is ScoredShop => entry !== null && entry.distance <= radiusKm)
       .sort((a, b) => b.score - a.score);
 
+    console.log(`[Shop Service] Returning ${scoredShops.length} shops within ${radiusKm}km radius`);
     return scoredShops.map(({ shop, distance }) => formatShopResponse(shop, distance));
   },
 
@@ -188,6 +203,37 @@ export const shopService = {
     const shop = await prisma.shop.update({
       where: { id: shopId },
       data: { isActive },
+    });
+
+    return formatShopResponse(shop);
+  },
+
+  async updateServiceAreas(
+    shopId: string,
+    ownerId: string,
+    serviceAreas: Array<{
+      id?: string;
+      name: string;
+      address?: string;
+      placeId?: string;
+      lat?: number;
+      lng?: number;
+      active?: boolean;
+    }>
+  ): Promise<ShopResponse> {
+    const existingShop = await prisma.shop.findUnique({ where: { id: shopId } });
+    if (!existingShop) {
+      throw new Error('Shop not found');
+    }
+    if (existingShop.ownerId !== ownerId) {
+      throw new Error('Not authorized to update this shop');
+    }
+
+    console.log(`[Shop Service] Updating service areas for shop ${shopId}:`, JSON.stringify(serviceAreas));
+
+    const shop = await prisma.shop.update({
+      where: { id: shopId },
+      data: { serviceAreas: serviceAreas as any },
     });
 
     return formatShopResponse(shop);
