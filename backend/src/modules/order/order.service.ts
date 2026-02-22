@@ -43,43 +43,34 @@ export const orderService = {
       throw new Error('Shop is currently not accepting orders');
     }
 
-    // Validate service area - check if shop serves the user's area
-    // The shop was already shown to the user via getNearbyShops (distance-based),
-    // but we do a secondary check here for safety.
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    const serviceAreas = (shop.serviceAreas as Array<{ name: string; lat?: number; lng?: number; active?: boolean }>) || [];
-    const activeAreas = serviceAreas.filter(a => a.active !== false);
-    
-    if (activeAreas.length > 0 && user) {
-      let servesUser = false;
-      
-      // Check 1: Name-based match (user's college vs service area name)
-      if (user.college) {
-        const userCollegeLower = user.college.toLowerCase().trim();
-        servesUser = activeAreas.some(area => {
-          const areaNameLower = area.name.toLowerCase().trim();
-          return areaNameLower.includes(userCollegeLower) || 
-                 userCollegeLower.includes(areaNameLower);
-        });
-      }
-      
-      // Check 2: If service areas have coordinates, the shop serves a geographic area
-      // The shop was already shown via getNearbyShops which filters by distance,
-      // so if any service area has coords, trust the discovery-layer filtering
-      if (!servesUser) {
-        const hasGeoAreas = activeAreas.some(area => 
-          typeof area.lat === 'number' && typeof area.lng === 'number'
-        );
-        if (hasGeoAreas) {
-          // Shop has coordinate-based service areas - trust the discovery layer
-          servesUser = true;
-        }
-      }
+    // Validate delivery area using the shop's registered address (location) as reference.
+    // The shop's permanent address (set during registration) is the delivery reference point.
+    // If the shop has a valid registered location, the student already found it via
+    // distance-based getNearbyShops filtering, so allow the order.
+    const shopLocation = shop.location as { lat?: number; lng?: number } | null;
+    const hasValidLocation = shopLocation && typeof shopLocation.lat === 'number' && typeof shopLocation.lng === 'number';
 
-      // Only block if shop has ONLY name-based areas and none match the user
-      if (!servesUser) {
-        console.log(`[Order Service] Service area check failed for user ${userId} (college: ${user.college}) - shop areas:`, JSON.stringify(activeAreas));
-        throw new Error('SERVICE_AREA_NOT_AVAILABLE:This shop is not delivering to your area. Please select a different shop.');
+    if (hasValidLocation) {
+      // Shop has a registered address with coordinates — delivery is based on this.
+      // The student already found this shop via nearby search, so allow the order.
+      console.log(`[Order Service] Shop "${shop.businessName}" has registered location (${shopLocation.lat}, ${shopLocation.lng}) - order allowed`);
+    } else {
+      // Fallback: no registered coordinates, check service area name match
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const serviceAreas = (shop.serviceAreas as Array<{ name: string; active?: boolean }>) || [];
+      const activeAreas = serviceAreas.filter(a => a.active !== false);
+
+      if (activeAreas.length > 0 && user?.college) {
+        const userCollegeLower = user.college.toLowerCase().trim();
+        const servesUser = activeAreas.some(area => {
+          const areaNameLower = area.name.toLowerCase().trim();
+          return areaNameLower.includes(userCollegeLower) || userCollegeLower.includes(areaNameLower);
+        });
+
+        if (!servesUser) {
+          console.log(`[Order Service] No location coords & name match failed for user ${userId} (college: ${user.college})`);
+          throw new Error('SERVICE_AREA_NOT_AVAILABLE:This shop is not delivering to your area. Please select a different shop.');
+        }
       }
     }
 
