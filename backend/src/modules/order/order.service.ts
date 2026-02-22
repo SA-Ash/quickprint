@@ -49,6 +49,7 @@ export const orderService = {
     // distance-based getNearbyShops filtering, so allow the order.
     const shopLocation = shop.location as { lat?: number; lng?: number } | null;
     const hasValidLocation = shopLocation && typeof shopLocation.lat === 'number' && typeof shopLocation.lng === 'number';
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
     if (hasValidLocation) {
       // Shop has a registered address with coordinates — delivery is based on this.
@@ -56,7 +57,6 @@ export const orderService = {
       console.log(`[Order Service] Shop "${shop.businessName}" has registered location (${shopLocation.lat}, ${shopLocation.lng}) - order allowed`);
     } else {
       // Fallback: no registered coordinates, check service area name match
-      const user = await prisma.user.findUnique({ where: { id: userId } });
       const serviceAreas = (shop.serviceAreas as Array<{ name: string; active?: boolean }>) || [];
       const activeAreas = serviceAreas.filter(a => a.active !== false);
 
