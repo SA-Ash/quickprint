@@ -43,26 +43,42 @@ export const orderService = {
       throw new Error('Shop is currently not accepting orders');
     }
 
-    // Validate service area - get user's college and check if shop serves it
+    // Validate service area - check if shop serves the user's area
+    // The shop was already shown to the user via getNearbyShops (distance-based),
+    // but we do a secondary check here for safety.
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user?.college) {
-      const serviceAreas = (shop.serviceAreas as Array<{ name: string; active?: boolean }>) || [];
-      const activeAreas = serviceAreas.filter(a => a.active !== false);
+    const serviceAreas = (shop.serviceAreas as Array<{ name: string; lat?: number; lng?: number; active?: boolean }>) || [];
+    const activeAreas = serviceAreas.filter(a => a.active !== false);
+    
+    if (activeAreas.length > 0 && user) {
+      let servesUser = false;
       
-      // Shop must have at least one active service area
-      if (activeAreas.length === 0) {
-        throw new Error('SERVICE_AREA_NOT_AVAILABLE:This shop is not currently delivering to any areas. Please select a different shop.');
+      // Check 1: Name-based match (user's college vs service area name)
+      if (user.college) {
+        const userCollegeLower = user.college.toLowerCase().trim();
+        servesUser = activeAreas.some(area => {
+          const areaNameLower = area.name.toLowerCase().trim();
+          return areaNameLower.includes(userCollegeLower) || 
+                 userCollegeLower.includes(areaNameLower);
+        });
       }
       
-      // Check if shop serves user's college/area
-      const userCollegeLower = user.college.toLowerCase().trim();
-      const servesUserArea = activeAreas.some(area => {
-        const areaNameLower = area.name.toLowerCase().trim();
-        return areaNameLower.includes(userCollegeLower) || 
-               userCollegeLower.includes(areaNameLower);
-      });
-      
-      if (!servesUserArea) {
+      // Check 2: If service areas have coordinates, the shop serves a geographic area
+      // The shop was already shown via getNearbyShops which filters by distance,
+      // so if any service area has coords, trust the discovery-layer filtering
+      if (!servesUser) {
+        const hasGeoAreas = activeAreas.some(area => 
+          typeof area.lat === 'number' && typeof area.lng === 'number'
+        );
+        if (hasGeoAreas) {
+          // Shop has coordinate-based service areas - trust the discovery layer
+          servesUser = true;
+        }
+      }
+
+      // Only block if shop has ONLY name-based areas and none match the user
+      if (!servesUser) {
+        console.log(`[Order Service] Service area check failed for user ${userId} (college: ${user.college}) - shop areas:`, JSON.stringify(activeAreas));
         throw new Error('SERVICE_AREA_NOT_AVAILABLE:This shop is not delivering to your area. Please select a different shop.');
       }
     }
